@@ -12,10 +12,12 @@ function isText(value: unknown): value is string {
 
 /** 模型输出进入系统的唯一结构校验边界。 */
 export function parseEvaluation(value: unknown, transcript: string): Omit<Evaluation, 'attemptId'> {
-  if (!isRecord(value) || !isText(value.summary) || !isText(value.nextStep) || !isText(value.referenceAnswer)) {
+  if (!isRecord(value) || !isText(value.summary) || !isText(value.nextStep)) {
     throw new Error('评估摘要或建议无效');
   }
-  if (!Array.isArray(value.userMindMap) || !Array.isArray(value.referenceMindMap)) throw new Error('思维导图无效');
+  if ((value.userMindMap !== undefined && !Array.isArray(value.userMindMap)) ||
+    (value.referenceMindMap !== undefined && !Array.isArray(value.referenceMindMap)) ||
+    (value.referenceAnswer !== undefined && !isText(value.referenceAnswer))) throw new Error('思维导图或参考答案无效');
   const parseMindMap = (items: unknown[], depth = 0): MindMapNode[] => {
     if (depth > 3 || items.length > 8) throw new Error('思维导图层级或节点过多');
     return items.map((item) => {
@@ -55,9 +57,9 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
   return {
     overallScore: typeof value.overallScore === 'number' ? value.overallScore : Math.round(dimensions.reduce((sum, item) => sum + item.score, 0) / dimensions.length),
     summary: value.summary,
-    userMindMap: parseMindMap(value.userMindMap),
-    referenceMindMap: parseMindMap(value.referenceMindMap),
-    referenceAnswer: value.referenceAnswer,
+    userMindMap: parseMindMap((value.userMindMap ?? []) as unknown[]),
+    referenceMindMap: parseMindMap((value.referenceMindMap ?? []) as unknown[]),
+    referenceAnswer: typeof value.referenceAnswer === 'string' ? value.referenceAnswer : '',
     featuredQuote,
     dimensions: dimensions.sort((a, b) => dimensionNames.indexOf(a.name) - dimensionNames.indexOf(b.name)),
     strengths: value.strengths,

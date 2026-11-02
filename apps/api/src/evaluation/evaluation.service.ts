@@ -42,15 +42,28 @@ featuredQuote找不到合适引用时必须为null，禁止改写原话当作引
           ],
         }),
       });
-      if (!response.ok) throw new Error('上游评估失败');
+      if (!response.ok) throw new ApiException(502, 'EVALUATION_FAILED', '评估服务暂时不可用，请稍后重试');
       const completion = await response.json() as {
         choices?: { message?: { content?: unknown } }[];
       } | null;
       const content = completion?.choices?.[0]?.message?.content;
-      if (typeof content !== 'string') throw new Error('评估响应无效');
-      const result = parseEvaluation(JSON.parse(content), attempt.transcript);
+      if (typeof content !== 'string') throw new ApiException(502, 'EVALUATION_FAILED', '评估服务未返回可读取的结果，请重试');
+      const normalized = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(normalized);
+      } catch {
+        throw new ApiException(502, 'EVALUATION_FAILED', '评估结果格式无法解析，请重试');
+      }
+      let result: ReturnType<typeof parseEvaluation>;
+      try {
+        result = parseEvaluation(parsed, attempt.transcript);
+      } catch {
+        throw new ApiException(502, 'EVALUATION_FAILED', '评估结果缺少必要内容，请重新提交回答');
+      }
       return { ...result, attemptId: attempt.id };
     } catch (error) {
+      if (error instanceof ApiException) throw error;
       if (error instanceof Error && error.name === 'TimeoutError') {
         throw new ApiException(504, 'UPSTREAM_TIMEOUT', '回答评估超时，请重试');
       }
