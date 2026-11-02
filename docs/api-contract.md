@@ -1,11 +1,11 @@
 # R1：后端接口契约与配置
 
-状态：契约已确定，业务接口尚未实现。共享类型以 `packages/shared/src/index.ts` 为准。
+状态：R3 论题接口已实现，录音提交接口尚未实现。共享类型以 `packages/shared/src/index.ts` 为准。
 
 ## 服务与配置
 
 - 转写：阿里云北京地域 `qwen3-asr-flash`，同步调用，使用 `DASHSCOPE_API_KEY`。本地已配置 Key，不代表已验证可调用或存在免费额度。
-- 出题与评估：`gpt-6-luna`。`LLM_API_KEY`、`LLM_BASE_URL` 已配置在本地，使用用户提供的 sub2api 接入地址；具体接入协议在 R3 核对，不默认第三方服务与官方接口完全一致。
+- 出题与评估：`gpt-6-luna`。`LLM_API_KEY`、`LLM_BASE_URL` 已配置在本地，使用用户提供的 sub2api 接入地址；R3 按 OpenAI 兼容 Chat Completions 格式实现，调用 Base URL 下的 `/chat/completions`；用户提供站点的实际兼容性尚未用真实请求验证。
 - 配置模板：`apps/api/.env.example`；实际配置：`apps/api/.env`，被 Git 忽略。R2 已实现环境文件加载与配置检查。
 - 业务接口缺少对应服务配置时返回 `SERVICE_NOT_CONFIGURED`；健康检查不依赖 AI 配置。
 - 不在 R1 调用收费 API。录音、论题与结果均不持久化；当前练习由浏览器维护。
@@ -20,7 +20,10 @@
 - 可选查询参数 `excludeTopicId`：当前题目 ID，预置题回退时避开该题；不保证 AI 生成内容语义上绝不重复。
 - HTTP 200：`TopicResponse`，包含 `topic`。
 - AI 调用失败、超时或缺少 LLM 配置时回退预置题库，`source` 为 `preset`；成功时为 `ai`。
-- `id` 为不透明字符串，`createdAt` 为 ISO 8601 时间字符串。
+- `excludeTopicId` 如提供，必须为 1–200 字符的非空字符串；重复参数或其他类型返回 HTTP 400。
+- AI 请求最多等待 15 秒，不自动重试；响应需为含 title、description 的 JSON 对象，两字段均为非空字符串且分别不超过 200、1000 字符，否则回退。
+- 预置题使用固定 ID，AI 题目由服务端生成 UUID；`createdAt` 为 ISO 8601 时间字符串。
+- 请求协议参考 [OpenAI Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)。本阶段使用本地模拟上游验证，不等同于真实服务连通性验证。
 
 ## POST /api/attempts
 
