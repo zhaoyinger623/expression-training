@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-R1–R8 已完成实现与首轮验收：获取论题、浏览器录音、回听与重录、自动转写和三维评估、同题两轮回答对比。页面使用后端返回的内容，不再展示静态示例。当前练习只保存在页面状态，刷新后清空，不保存音频或练习历史。
+R1–R8 已完成实现与首轮验收：获取论题、浏览器录音、回听与重录、自动转写和三维评估、同题两轮回答对比。页面使用后端返回的内容，不再展示静态示例。新增 SQLite 本地练习历史：成功作答后自动保存论题、转写文本与反馈，刷新或重启后可从历史记录打开；不保存音频。
 
 构建、本地模拟模型的 Chrome 浏览器全流程，以及经授权的真实出题、转写和评估各一次均已通过。7.5 秒中文合成 WAV 转写与原文一致；Chrome 原生 WebM 录制和上传已在模拟模型链路通过。真实人声、噪声口音、WebM 的真实模型解码及其他浏览器仍需实际体验确认，详见 [验收记录](docs/acceptance.md)。
 
@@ -19,6 +19,7 @@ R1–R8 已完成实现与首轮验收：获取论题、浏览器录音、回听
 | --- | --- |
 | DASHSCOPE_API_KEY / DASHSCOPE_BASE_URL / ASR_MODEL | 北京地域 Qwen3-ASR-Flash 转写 |
 | LLM_API_KEY / LLM_BASE_URL / LLM_MODEL | sub2api 接入的 GPT-6 Luna 出题与评估 |
+| SQLITE_PATH | 数据库路径，默认 apps/api/data/practice.sqlite；相对路径以 apps/api 为基准 |
 | PORT / WEB_ORIGIN | 后端端口和允许的前端来源，默认 3000 与 http://localhost:5173 |
 
 后端从固定的 `apps/api/.env` 加载配置，不依赖启动目录；系统环境变量优先。端口和已填写的 URL 不合法时启动失败，缺少 AI 配置不影响健康检查。
@@ -52,6 +53,14 @@ pnpm build
 
 提交失败时录音留在当前页面，可回听、重录或重试；重试会重新执行模型调用。处理期间禁止重复提交和换题。两次上游调用各限时 60 秒，前端等待上限为 135 秒。
 
+## 本地数据存储
+
+后端通过 better-sqlite3 内嵌 SQLite，用户无需安装 SQLite 软件或启动数据库服务。`pnpm install` 会安装数据库依赖；首次启动后端时自动创建数据库及目录。依赖优先使用预编译包，不支持的运行环境可能需要本机编译工具。
+
+默认文件为 `apps/api/data/practice.sqlite`，已加入 Git 忽略。每次练习保存论题、一至两轮转写文本与评估、创建和更新时间；失败的作答不新增记录。页眉“历史记录”可分页查看并恢复反馈，只有一轮的练习可继续第二轮。刷新会重置当前页面，但不会删除数据库中的历史。
+
+备份或迁移时，先停止后端，再复制该数据库文件。`SQLITE_PATH` 可配置其他目录，后端须有读写权限。数据保存在运行 NestJS 的电脑上；若后端部署在服务器，数据库也在服务器上，不会自动保存到访问者的电脑。音频始终不落盘。
+
 ## 后端接口
 
 完整契约见 [docs/api-contract.md](docs/api-contract.md)。
@@ -61,9 +70,11 @@ pnpm build
 | GET /api/health | 健康检查 |
 | GET /api/topics/random | 获取论题，可附带 excludeTopicId |
 | POST /api/transcriptions | 独立转写验收，multipart 字段 audio、durationSeconds |
+| GET /api/practices | 历史列表，每页 20 条，可附带 offset |
+| GET /api/practices/:id | 读取练习及各轮反馈 |
 | POST /api/attempts | 完整作答，multipart 字段 audio、metadata |
 
-metadata 为 JSON 字符串，包含完整 `topic`、数字 `round`（1 或 2）及数字 `durationSeconds`（大于 0、不超过 180）。成功返回 HTTP 201、`{ attempt, evaluation }`；评估 ID 与作答 ID 由后端关联。主流程直接调用完整作答接口，不先调用独立转写接口。
+metadata 为 JSON 字符串，包含同一次练习共用的 `practiceId`、完整 `topic`、数字 `round`（1 或 2）及数字 `durationSeconds`（大于 0、不超过 180）。成功返回 HTTP 201、`{ attempt, evaluation }`；评估 ID 与作答 ID 由后端关联。主流程直接调用完整作答接口，不先调用独立转写接口。
 
 项目设计与 R1–R8 阶段见 [design.md](design.md)，版本状态见 [version.md](version.md)。
 

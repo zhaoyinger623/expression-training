@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SubmitAttemptResponse, Topic } from '@expression/shared';
-import { getTopic, submitAttempt } from './api';
+import { getPractice, getTopic, submitAttempt } from './api';
 import { useRecorder } from './useRecorder';
+import { HistoryPanel } from './HistoryPanel';
 
 function MicIcon({ recording }: { recording: boolean }) {
   return (
@@ -23,11 +24,14 @@ function App() {
   const [selected, setSelected] = useState(0);
   const [showAnswer, setShowAnswer] = useState(true);
   const [audioUrl, setAudioUrl] = useState('');
+  const [practiceId, setPracticeId] = useState<string>(() => crypto.randomUUID());
+  const [showHistory, setShowHistory] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const recorder = useRecorder();
   const feedbackTitle = useRef<HTMLHeadingElement>(null);
   const recording = recorder.phase === 'recording';
   const requesting = recorder.phase === 'requesting';
-  const busy = loadingTopic || submitting || recording || requesting;
+  const busy = loadingTopic || submitting || recording || requesting || openingId !== null;
   const result = results[selected];
 
   async function loadTopic() {
@@ -39,6 +43,7 @@ function App() {
       setResults([]);
       setSelected(0);
       setShowAnswer(true);
+      setPracticeId(crypto.randomUUID());
       recorder.reset();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '获取论题失败，请重试。');
@@ -70,7 +75,7 @@ function App() {
     setError('');
     try {
       const response = await submitAttempt(recorder.audio, {
-        topic, round: results.length === 0 ? 1 : 2, durationSeconds: recorder.seconds,
+        practiceId, topic, round: results.length === 0 ? 1 : 2, durationSeconds: recorder.seconds,
       });
       setResults((previous) => [...previous, response]);
       setSelected(results.length);
@@ -89,12 +94,37 @@ function App() {
     setShowAnswer(true);
   }
 
+  async function openPractice(id: string) {
+    setOpeningId(id);
+    setError('');
+    try {
+      const practice = await getPractice(id);
+      setPracticeId(practice.id);
+      setTopic(practice.topic);
+      setResults(practice.results);
+      setSelected(practice.results.length - 1);
+      setShowAnswer(false);
+      recorder.reset();
+      setShowHistory(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '读取练习失败，请重试。');
+    } finally {
+      setOpeningId(null);
+    }
+  }
+
   const time = `${String(Math.floor(recorder.seconds / 60)).padStart(2, '0')}:${String(Math.floor(recorder.seconds % 60)).padStart(2, '0')}`;
 
   return (
     <div className="app-shell">
-      <header className="site-header"><a className="site-name" href="#main">言序</a></header>
+      <header className="site-header"><a className="site-name" href="#main">言序</a>
+        <nav className="header-actions" aria-label="练习导航">
+          <button type="button" disabled={busy} aria-pressed={!showHistory} onClick={() => { setError(''); setShowHistory(false); }}>练习</button>
+          <button type="button" disabled={busy} aria-pressed={showHistory} onClick={() => { setError(''); setShowHistory(true); }}>历史记录</button>
+        </nav>
+      </header>
       <main id="main" className="main-content">
+        {showHistory ? <HistoryPanel onOpen={(id) => void openPractice(id)} openingId={openingId} detailError={error} /> : <>
         <section className={`topic-view ${!showAnswer ? 'topic-view-compact' : ''}`} aria-labelledby="topic-title" aria-busy={loadingTopic}>
           <div className="topic-topline">
             <p className="intro-line">一次练习，从一个值得思考的问题开始。</p>
@@ -111,7 +141,6 @@ function App() {
           <p>{error || recorder.error}</p>
           {!topic && !loadingTopic && <button className="button button-secondary" type="button" onClick={() => void loadTopic()}>重新获取论题</button>}
         </div>}
-
         {topic && showAnswer && <section className="answer-view" aria-labelledby="answer-title">
           <div className="answer-heading">
             <h2 id="answer-title">{results.length ? '把想法再说一次' : '把想法说出来'}</h2>
@@ -182,6 +211,7 @@ function App() {
             </article>)}</div>
           </section>
         </div>}
+        </>}
       </main>
       <footer className="site-footer"><span>言序 · 把想法说得更清楚</span><span>练习，从下一句话开始。</span></footer>
     </div>

@@ -8,6 +8,7 @@ import { ApiException } from '../common/api-exception.js';
 import { ApiConfig } from '../config.js';
 import { EvaluationService } from '../evaluation/evaluation.service.js';
 import { TranscriptionService } from '../transcription/transcription.service.js';
+import { PracticeStore } from '../practices/practice.store.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -19,6 +20,7 @@ export class AttemptsController {
     private readonly transcription: TranscriptionService,
     private readonly evaluation: EvaluationService,
     private readonly config: ApiConfig,
+    private readonly store: PracticeStore,
   ) {}
 
   @Post()
@@ -39,7 +41,10 @@ export class AttemptsController {
     if (!isRecord(data) || !isRecord(data.topic)) {
       throw new ApiException(400, 'INVALID_REQUEST', 'metadata 必须包含完整论题');
     }
-    const { topic, round, durationSeconds } = data;
+    const { topic, round, durationSeconds, practiceId } = data;
+    if (typeof practiceId !== 'string' || !practiceId.trim() || practiceId.length > 200) {
+      throw new ApiException(400, 'INVALID_REQUEST', 'practiceId 必须为 1–200 字符的练习 ID');
+    }
     if ((round !== 1 && round !== 2) || typeof durationSeconds !== 'number' ||
       !Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > 180
     ) throw new ApiException(400, 'INVALID_REQUEST', '轮次必须为 1 或 2，录音时长必须大于 0 且不超过 180 秒');
@@ -49,6 +54,14 @@ export class AttemptsController {
       (topic.source !== 'ai' && topic.source !== 'preset') ||
       typeof topic.createdAt !== 'string' || !Number.isFinite(Date.parse(topic.createdAt))
     ) throw new ApiException(400, 'INVALID_REQUEST', '论题字段不完整或格式不正确');
+
+    const previous = this.store.find(practiceId);
+    if (previous && previous.topic.id !== topic.id) {
+      throw new ApiException(400, 'INVALID_REQUEST', '这次练习的论题不匹配');
+    }
+    if (round === 2 && !previous?.results.some((item) => item.attempt.round === 1)) {
+      throw new ApiException(400, 'INVALID_REQUEST', '请先完成本次练习的首次回答');
+    }
 
     // 评估配置缺失时先返回，避免先转写录音产生无用调用。
     if (!this.config.llm.apiKey || !this.config.llm.baseUrl) {
@@ -63,6 +76,11 @@ export class AttemptsController {
       id: topic.id, title: topic.title, description: topic.description,
       source: topic.source, createdAt: topic.createdAt,
     }, attempt);
-    return { attempt, evaluation };
+    const result = { attempt, evaluation };
+    this.store.save(practiceId, {
+      id: topic.id, title: topic.title, description: topic.description,
+      source: topic.source, createdAt: topic.createdAt,
+    }, result);
+    return result;
   }
 }

@@ -46,6 +46,7 @@ export interface TranscriptionResponse {
 
 /** multipart 的 metadata 字段以 JSON 字符串发送，audio 字段为录音文件。 */
 export interface SubmitAttemptMetadata {
+  practiceId: string;
   topic: Topic;
   round: 1 | 2;
   durationSeconds: number;
@@ -54,6 +55,27 @@ export interface SubmitAttemptMetadata {
 export interface SubmitAttemptResponse {
   attempt: Attempt;
   evaluation: Evaluation;
+}
+
+export interface Practice {
+  id: string;
+  topic: Topic;
+  results: SubmitAttemptResponse[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PracticeSummary {
+  id: string;
+  topicTitle: string;
+  attemptCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PracticeHistoryResponse {
+  items: PracticeSummary[];
+  total: number;
 }
 
 export type ApiErrorCode =

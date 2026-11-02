@@ -1,12 +1,14 @@
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { Global, Injectable, Module } from '@nestjs/common';
 
 @Injectable()
 export class ApiConfig {
   readonly port: number;
   readonly webOrigin: string;
+  readonly databasePath: string;
   readonly asr: { apiKey: string; baseUrl: string; model: string };
   readonly llm: { apiKey: string; baseUrl: string; model: string };
 
@@ -19,6 +21,7 @@ export class ApiConfig {
       throw new Error('PORT 必须为 1–65535 的整数');
     }
     this.webOrigin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
+    this.databasePath = resolve(fileURLToPath(new URL('../', import.meta.url)), process.env.SQLITE_PATH ?? 'data/practice.sqlite');
     this.asr = {
       apiKey: process.env.DASHSCOPE_API_KEY ?? '',
       baseUrl: process.env.DASHSCOPE_BASE_URL ?? 'https://dashscope.aliyuncs.com/compatible-mode/v1',
