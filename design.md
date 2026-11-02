@@ -1,0 +1,98 @@
+# 表达能力锻炼系统设计
+
+## 目标与范围
+
+让单个用户通过辩证性论题、录音作答和有依据的 AI 反馈练习表达。首版流程：获取论题 → 录音 → 自动转写与评估 → 在同一页面阅读回答文本和反馈 → 同题再答一次。
+
+P0：AI 生成论题（失败时使用预置题库）、用户主动换题、录音与重录、只读转写文本、结构化评估、同题两次回答对比、基本错误提示。P1：练习历史、按主题出题、准备提示、基于音频的语速与停顿分析。无需导出、账户或多人功能。
+
+仅依据转写文本评价观点与论证、结构与连贯、表达清晰度。语速与停顿不能从文本可靠推断，须有音频分析能力后再提供。
+
+## 技术方案：方案 A
+
+- Monorepo：pnpm workspace + Turborepo。
+- 前端：React + Vite，负责单页论题展示、浏览器录音、只读转写文本、反馈和结果对比。
+- 后端：NestJS，同步调用 AI 出题、语音转写和评估服务。单次录音上限暂定 3 分钟，避免请求等待过长。
+- 提交录音后，后端同步完成转写与评估，并返回原始转写文本和反馈。用户可阅读转写文本，但不能编辑或借由文字输入代替口头作答。音频在处理完成后不持久保存。
+- 当前练习及两次结果保存在前端页面状态；首版不引入数据库。页面刷新后练习状态清空。
+- 外部数据仅在 API 边界校验。AI 评估结果在服务端校验为固定结构，再交给前端使用。
+
+### 目录
+
+```text
+apps/
+  web/                 React + Vite
+  api/                 NestJS
+    src/topics/        出题与预置题库
+    src/transcription/ 录音转写
+    src/evaluation/    回答评估
+packages/
+  shared/              前后端共享的数据类型
+pnpm-workspace.yaml
+turbo.json
+```
+
+### 模块依赖
+
+```mermaid
+flowchart LR
+  Web[apps/web] --> API[apps/api]
+  Web --> Shared[packages/shared]
+  API --> Shared
+  API --> Topics[topics]
+  API --> Transcription[transcription]
+  API --> Evaluation[evaluation]
+  Topics --> AI[AI 服务]
+  Transcription --> AI
+  Evaluation --> AI
+```
+
+### 数据模型
+
+| 模型 | 字段 | 用途 |
+| --- | --- | --- |
+| Topic | id, title, description, source, createdAt | 论题；source 为 AI 或预置题库 |
+| Attempt | id, topicId, round, transcript, durationSeconds, createdAt | 一次作答；round 为 1 或 2 |
+| Evaluation | attemptId, dimensions, strengths, issues, nextStep | 一次作答的反馈 |
+| DimensionFeedback | name, score, reason, suggestion | 单维度评分及具体依据 |
+
+维度固定为“观点与论证”“结构与连贯”“表达清晰度”。反馈应尽可能引用回答中的具体内容，不只给笼统分数。
+
+## 视觉设计
+
+界面基调为安静、专注的练习空间。采用炭黑与灰白构成中性色体系：主要按钮以炭黑底和白字突出，当前步骤通过文字重量与位置体现；背景使用浅灰白 `#F7F7F5`，正文使用炭黑 `#222222`。成功与错误状态只在必要处使用语义色，并配合文字说明；评分不能只依赖颜色传达。
+
+页眉仅显示“言序”文字名称，当前版本不使用图形 Logo 或自定义浏览器图标。
+
+### Design tokens
+
+| Token | 值 | 用途 |
+| --- | --- | --- |
+| `color.brand` | `#222222` | 主操作、焦点与强调 |
+| `color.brandHover` | `#3A3A3A` | 主操作悬停 |
+| `color.background` | `#F7F7F5` | 页面背景 |
+| `color.surface` | `#FFFFFF` | 卡片及输入区域 |
+| `color.text` | `#222222` | 主要文字 |
+| `color.textMuted` | `#626262` | 次要文字 |
+| `color.border` | `#E2E2DE` | 分隔与边框 |
+| `color.success` | `#15803D` | 完成状态 |
+| `color.error` | `#B91C1C` | 错误状态 |
+| `radius.card` | `16px` | 内容卡片 |
+| `radius.control` | `10px` | 按钮与输入框 |
+| `space.unit` | `4px` | 间距基准，常用 8/16/24/32px |
+| `content.maxWidth` | `800px` | 练习内容最大宽度 |
+| `type.body` | `16px / 1.6` | 正文 |
+| `type.heading` | `28px / 1.3` | 页面标题 |
+
+论题、录音入口、只读回答文本和反馈位于同一页面。论题旁提供“换一题”；换题后清空当前练习状态。麦克风位于作答区中央，是作答阶段最醒目的操作。随练习状态逐步展示内容，每个状态只突出一个主操作。反馈优先呈现可执行建议和对应的回答片段，再呈现维度分数。移动端保持单列布局。
+
+Avoid unneccessary secondary labels and decsriptions. Let the layout do the axplaning
+
+## 开发顺序与验收
+
+1. 建立 workspace、Turborepo、React、NestJS：根目录可启动前后端，前端能请求健康检查接口。
+2. 定义共享类型并实现论题接口：AI 可生成论题，服务失败时返回预置论题；用户可主动换题。
+3. 实现录音界面：可开始、结束、重录，并提示麦克风权限问题。
+4. 实现录音处理接口：上传录音后自动转写并评估，返回只读展示用的文本和固定结构的三维反馈。
+5. 串联单页结果与同题重答：论题始终可见，完成两次作答并查看对应反馈，建议包含具体依据。
+6. 完善异常提示和 README：空录音、转写失败、评估失败均有清楚的恢复方式；新环境可按文档启动。
