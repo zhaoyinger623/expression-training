@@ -39,6 +39,11 @@ export interface TopicResponse {
   topic: Topic;
 }
 
+/** POST /api/transcriptions；multipart 字段为 audio 和 durationSeconds。 */
+export interface TranscriptionResponse {
+  transcript: string;
+}
+
 /** multipart 的 metadata 字段以 JSON 字符串发送，audio 字段为录音文件。 */
 export interface SubmitAttemptMetadata {
   topic: Topic;

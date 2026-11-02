@@ -1,6 +1,6 @@
 # R1：后端接口契约与配置
 
-状态：R3 论题接口已实现，录音提交接口尚未实现。共享类型以 `packages/shared/src/index.ts` 为准。
+状态：R3 论题接口、R4 独立转写接口已实现；完整作答接口将在 R6 串联。共享类型以 `packages/shared/src/index.ts` 为准。
 
 ## 服务与配置
 
@@ -25,13 +25,25 @@
 - 预置题使用固定 ID，AI 题目由服务端生成 UUID；`createdAt` 为 ISO 8601 时间字符串。
 - 请求协议参考 [OpenAI Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)。本阶段使用本地模拟上游验证，不等同于真实服务连通性验证。
 
+## POST /api/transcriptions（R4 独立验收接口）
+
+- 请求为 multipart/form-data：`audio` 是一个非空录音文件，`durationSeconds` 是大于 0 且不超过 180 的数字字符串；只接收一个文件和一个文本字段。
+- HTTP 201 返回 `TranscriptionResponse`：`{ "transcript": "转写原文" }`。不生成 Attempt 或评估结果。
+- 文件上限为 **6 MiB**，为 Base64 编码（约增大 1/3）预留 Qwen 输入限制所需空间；R1 的 8 MiB 上限据此调整。
+- 接收 WebM、MP4/M4A、WAV、MP3 的声明 MIME 类型（包括 audio/webm、video/webm、audio/mp4、video/mp4、audio/m4a、audio/x-m4a、audio/wav、audio/x-wav、audio/mpeg、audio/mp3）。上传边界不做音频解码或时长探测，实际内容由 Qwen 解析；伪造 MIME 的无效内容可能返回 TRANSCRIPTION_FAILED。
+- NestJS 默认内存存储接收音频，随后通过 Base64 Data URI 发送给 Qwen；不写临时文件、不使用对象存储、不记录音频或转写内容日志。
+- Qwen 采用 Base URL 下 `/chat/completions`，`stream=false`、`asr_options.enable_itn=false`；不额外发送润色提示，不强制 language 以容纳中英混合。关闭 ITN 只控制数字标准化，不保证模型逐字保留所有口头禅。
+- 上游调用限时 60 秒，不自动重试。空白转写返回 422 EMPTY_TRANSCRIPT；超时返回 504 UPSTREAM_TIMEOUT；网络、上游非成功状态或无效响应返回 502 TRANSCRIPTION_FAILED；缺少 Key 返回 503 SERVICE_NOT_CONFIGURED。
+- 参考 [Qwen-ASR 官方接口](https://help.aliyun.com/zh/model-studio/qwen-asr-api-reference)。当前保留北京地域通用域名配置；如账号要求业务空间专属域名，在 DASHSCOPE_BASE_URL 中替换，不更改代码。
+- R6 的作答接口将复用 TranscriptionService，不通过 HTTP 调用此接口，也不重复转写。
+
 ## POST /api/attempts
 
 请求使用 `multipart/form-data`，浏览器自动生成 Content-Type boundary：
 
 | 字段 | 形式 | 约束 |
 | --- | --- | --- |
-| audio | 文件 | 单个非空文件；最大 8 MiB；首版接收 WebM、MP4/M4A、WAV、MP3 |
+| audio | 文件 | 单个非空文件；最大 6 MiB；首版接收 WebM、MP4/M4A、WAV、MP3 |
 | metadata | JSON 字符串 | 符合 `SubmitAttemptMetadata`：完整 topic、round、durationSeconds |
 
 - `round` 为 1 或 2；`durationSeconds` 大于 0 且不超过 180 秒。浏览器计时并在 180 秒结束录音；该字段是客户端计时信息，不等同于服务端解析出的音频时长。
@@ -67,4 +79,4 @@
 | 503 | SERVICE_NOT_CONFIGURED | 作答所需服务配置缺失 |
 | 500 | INTERNAL_ERROR | 未预期的服务端错误 |
 
-录音格式和大小在 R4 用真实浏览器样本确认；如不兼容，先调整录制格式，再考虑是否需要音频转换依赖。
+R4 已验证 multipart 传输、声明格式和大小限制；尚未调用真实 Qwen 解码浏览器录音。真实音频兼容性在 R7 联调；如不兼容，先调整录制格式，再考虑是否需要音频转换依赖。

@@ -100,7 +100,7 @@ Avoid unneccessary secondary labels and decsriptions. Let the layout do the axpl
 | R1 | 确定 Qwen3-ASR-Flash 转写、GPT-6 Luna 出题评估；定义共享接口类型、错误格式和配置清单，详见 [接口契约](docs/api-contract.md) | 已完成；服务配置已保存本地，连通性待验证 |
 | R2 | 整理 NestJS 模块、加载本地环境变量、配置 CORS 与异常响应；健康检查可用 | 已完成 |
 | R3 | 实现 AI 论题接口，失败时回退预置题库 | 已完成；真实 sub2api 待联调 |
-| R4 | 实现录音上传及 Qwen 转写，确认浏览器录音兼容性 | 待开发 |
+| R4 | 实现录音上传及 Qwen 转写 | 后端已完成；真实浏览器音频与识别质量待 R7 联调 |
 | R5 | 实现三维评估与结构校验，反馈具有具体依据 | 待开发 |
 | R6 | 串联一次作答接口，同步返回转写和评估 | 待开发 |
 | R7 | 联调前端录音、换题、结果与同题重答 | 待开发 |
