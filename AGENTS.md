@@ -14,5 +14,5 @@
 - 使用 pnpm workspace + Turborepo 管理 monorepo；应用为 React 前端和 NestJS 后端。
 - 以 `design.md` 记录的方案 A 为实施依据，优先完成单用户可运行的练习闭环。
 - 控制改动范围；新增功能先核对 `design.md` 的 P0/P1 边界。
-- 变更对用户可见的功能或版本状态时，同步更新 `version.md`。
-- 完成大功能迭代或小功能修复后，更新 `version.md` 并创建 Git commit；提交前核对实际差异。
+- `version.md` 按阶段记录用户可见的成果；多次小修改合并到同一版本，不逐次增加版本号或记录中间尝试。
+- 完成大功能迭代或小功能修复后创建 Git commit；提交前核对实际差异。只有达到新阶段时才新增版本号。
