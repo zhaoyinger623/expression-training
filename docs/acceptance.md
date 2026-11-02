@@ -53,6 +53,8 @@
 ## v0.4.0：Vercel / IndexedDB 适配
 
 - `pnpm build`：前后端类型检查和生产构建通过。
-- 静态核对：后端无 SQLite 依赖或历史读写入口，round=2 不查询服务器历史；前后端统一 4 MiB 录音限制，metadata 16 KiB；函数时限 150 秒，CORS 使用配置的精确来源。
+- 静态核对：后端无 SQLite 依赖或历史读写入口，round=2 不查询服务器历史；前后端统一 4 MiB 录音限制，metadata 16 KiB；函数时限需在 Vercel 控制台设为 150 秒（Fluid Compute 默认 300 秒也足够），CORS 使用配置的精确来源。
 - 历史改为 IndexedDB，写入以事务 complete 为成功依据；保存失败不丢弃页面反馈，仅重试本地写入。
 - 未运行新增自动化或浏览器测试，未调用真实 AI，未执行 Vercel 云部署；刷新恢复、浏览器存储权限失败和云端端到端体验仍需实际检查。前面的 R1–R8 记录对应当时版本。
+
+- 部署反馈修复：删除 apps/api/vercel.json 中无法匹配的 functions.src/main.ts 配置，改用项目默认时限；配置 JSON 与 Git 差异检查通过，云端重新部署结果待确认。

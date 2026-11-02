@@ -58,7 +58,7 @@ https://你的后端域名/api/health
 
 预期显示 `{"status":"ok"}`。健康检查不调用 AI；它成功不代表模型服务已经连通。
 
-仓库的 `apps/api/vercel.json` 使用 NestJS 原生框架，入口为 `src/main.ts`，设置 `maxDuration: 150`。在后端项目 **Settings → Functions** 确认 Fluid Compute 已启用，并在部署后函数详情中核对有效时限。转写与评估各限时 60 秒，前端等待 135 秒。Vercel 官方支持 [NestJS 入口识别](https://vercel.com/docs/frameworks/backend/nestjs) 和 [函数执行时限配置](https://vercel.com/docs/functions/configuring-functions/duration)。
+仓库的 `apps/api/vercel.json` 仅声明 NestJS 原生框架，由 Vercel 识别 `src/main.ts` 入口并生成函数；不要把该源文件路径写入 `functions` 匹配规则，否则当前部署器可能报 unused_function。执行时限在后端项目 **Settings → Functions → Function Max Duration** 中设置为 **150 秒**，保存后重新部署；也可保留 Fluid Compute 的 300 秒默认值。在这里确认 Fluid Compute 已启用，并在部署后函数详情中核对有效时限。转写与评估各限时 60 秒，前端等待 135 秒。Vercel 官方支持 [NestJS 入口识别](https://vercel.com/docs/frameworks/backend/nestjs) 和 [函数执行时限配置](https://vercel.com/docs/functions/configuring-functions/duration)。
 
 ## 4. 创建前端项目
 
@@ -118,6 +118,7 @@ IndexedDB 保存失败时，页面会保留反馈并提供“重试保存”，�
 
 | 现象 | 优先检查 |
 | --- | --- |
+| unused_function / src/main.ts 无匹配 | 确认部署的是修复后的最新提交；apps/api/vercel.json 不应包含 functions.src/main.ts，执行时限改在控制台设置 |
 | 构建失败、找不到 @expression/shared | 两个项目的 Root Directory 和根目录外文件访问设置；仓库包含完整 workspace |
 | 页面打开但请求 localhost | 前端 VITE_API_BASE_URL 未配置；设置后重新构建部署 |
 | 浏览器报 CORS | 后端 WEB_ORIGIN 是否与前端地址的协议、域名、端口一致，是否已重新部署 |

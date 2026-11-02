@@ -116,4 +116,4 @@ R4–R8 已验证 multipart 传输、声明格式和大小限制、Chrome 原生
 
 ## Vercel 运行配置
 
-`apps/api/vercel.json` 为 src/main.ts 配置 maxDuration=150 秒；前端请求限时 135 秒，转写和评估各 60 秒。生产环境 WEB_ORIGIN 填实际前端来源（不含路径），经 URL.origin 规范化后用于精确 CORS 匹配。VITE_API_BASE_URL 填后端来源，不含 /api；它是构建时变量，修改后须重新构建前端。详见 [部署指南](deployment-vercel.md)。
+`apps/api/vercel.json` 仅声明 NestJS 框架，不以源文件路径配置 functions；函数时限在 Vercel 控制台设置为 150 秒（Fluid Compute 默认 300 秒也足够）；前端请求限时 135 秒，转写和评估各 60 秒。生产环境 WEB_ORIGIN 填实际前端来源（不含路径），经 URL.origin 规范化后用于精确 CORS 匹配。VITE_API_BASE_URL 填后端来源，不含 /api；它是构建时变量，修改后须重新构建前端。详见 [部署指南](deployment-vercel.md)。
