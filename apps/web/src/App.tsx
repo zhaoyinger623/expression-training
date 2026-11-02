@@ -16,15 +16,21 @@ function MicIcon({ recording }: { recording: boolean }) {
   );
 }
 
-function MindMap({ title, center, nodes }: { title: string; center: string; nodes: MindMapNode[] }) {
-  return <section className="mindmap-view" aria-label={title}>
+function MindMap({ title, center, nodes, variant }: { title: string; center: string; nodes: MindMapNode[]; variant: 'user' | 'reference' }) {
+  return <section className={`mindmap-view mindmap-${variant}`} aria-label={title}>
     <h3>{title}</h3>
-    <div className="mindmap"><strong className="mindmap-center">{center}</strong><ul>{nodes.map((node, index) => <MindMapBranch key={`${node.label}-${index}`} node={node} />)}</ul></div>
+    <div className="mindmap"><strong className="mindmap-center">{center}</strong><ul>{nodes.map((node, index) => <MindMapBranch key={`${node.label}-${index}`} node={node} index={index} />)}</ul></div>
   </section>;
 }
 
-function MindMapBranch({ node }: { node: MindMapNode }) {
-  return <li><span>{node.label}</span>{node.children.length > 0 && <ul>{node.children.map((child, index) => <MindMapBranch key={`${child.label}-${index}`} node={child} />)}</ul>}</li>;
+function MindMapBranch({ node, index }: { node: MindMapNode; index: number }) {
+  return <li className={`branch-tone-${index % 4}`}><span>{node.label}</span>{node.children.length > 0 && <ul>{node.children.map((child, childIndex) => <MindMapBranch key={`${child.label}-${childIndex}`} node={child} index={childIndex} />)}</ul>}</li>;
+}
+
+function renderHighlightedLine(line: string) {
+  return line.split(/(==[^=]+==)/g).map((part, index) => part.startsWith('==') && part.endsWith('==')
+    ? <mark key={index}>{part.slice(2, -2)}</mark>
+    : part);
 }
 
 function App() {
@@ -236,29 +242,33 @@ function App() {
           </section>
           <section className="feedback-view" aria-labelledby="feedback-title">
             <div className="feedback-heading"><h2 id="feedback-title" tabIndex={-1} ref={feedbackTitle}>{result.evaluation.summary}</h2></div>
-            <section className="overall-score" aria-label="总分"><span>本次总分</span><strong>{result.evaluation.overallScore}<small> / 10</small></strong></section>
-            <div className={`feedback-main ${!result.evaluation.featuredQuote ? 'feedback-main-single' : ''}`}>
-              {result.evaluation.featuredQuote && <div className="feedback-quote"><span className="quote-mark" aria-hidden="true">“</span><blockquote>{result.evaluation.featuredQuote.text}</blockquote><p>{result.evaluation.featuredQuote.advice}</p></div>}
-              <div className="feedback-next">
-                <h3>{results.length === 1 ? '再答一次时，试试这样做' : '下次练习，试试这样做'}</h3>
-                <p>{result.evaluation.nextStep}</p>
-                {results.length === 1 ? <button className="button button-primary" type="button" disabled={busy} onClick={answerAgain}>同题再答一次 <span aria-hidden="true">↗</span></button>
-                  : <button className="button button-primary" type="button" disabled={busy || !!pendingSave} onClick={() => void loadTopic()}>换一题继续练习 <span aria-hidden="true">↗</span></button>}
-              </div>
-            </div>
-            <div className="feedback-details">
-              {result.evaluation.strengths.length > 0 && <div><h3>已经做得好的</h3><ul>{result.evaluation.strengths.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
-              {result.evaluation.issues.length > 0 && <div><h3>可以改进的</h3><ul>{result.evaluation.issues.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
+            <section className="overall-score" aria-label={`本次总分 ${result.evaluation.overallScore} 分，共 10 分`}>
+              <div className="overall-score-copy"><span>OVERALL SCORE · 6 DIMENSIONS</span><h3>本次总分</h3><p>把表达的整体表现，变成下一步练习的起点。</p></div>
+              <div className="overall-score-value"><strong>{result.evaluation.overallScore}</strong><span>/ 10</span></div>
+              <div className="score-track" aria-hidden="true"><i style={{ width: `${result.evaluation.overallScore * 10}%` }} /></div>
+            </section>
+            <div className="mindmap-grid">
+              <MindMap title="你的回答与待改进点" center={topic?.title ?? '你的回答'} nodes={result.evaluation.userMindMap} variant="user" />
+              <MindMap title="参考回答思路" center="清晰表达的结构" nodes={result.evaluation.referenceMindMap} variant="reference" />
             </div>
             <div className="dimension-list">{result.evaluation.dimensions.map((item) => <article className="dimension-row" key={item.name}>
               <div className="dimension-top"><h3>{item.name}</h3><span>{item.score}<small> / 10</small></span></div>
               <p>{item.reason}</p><p className="dimension-suggestion">{item.suggestion}</p>
             </article>)}</div>
-            <div className="mindmap-grid">
-              <MindMap title="你的回答与待改进点" center={topic?.title ?? '你的回答'} nodes={result.evaluation.userMindMap} />
-              <MindMap title="参考回答思路" center="清晰表达的结构" nodes={result.evaluation.referenceMindMap} />
-            </div>
-            <section className="reference-answer"><h3>参考文字答案</h3><p>{result.evaluation.referenceAnswer}</p></section>
+            <section className="reference-answer"><h3>参考文字答案</h3><div className="reference-answer-body">{result.evaluation.referenceAnswer.split('\n').map((line, index) => <p key={index}>{renderHighlightedLine(line)}</p>)}</div></section>
+            <section className="evidence-feedback" aria-labelledby="evidence-title">
+              <h3 id="evidence-title">从你的原话来看</h3>
+              <div className="evidence-list">{result.evaluation.evidenceQuotes.map((item, index) => <article className={`evidence-card evidence-${item.kind}`} key={`${item.kind}-${index}`}>
+                <span className="evidence-kind">{item.kind === 'strength' ? '表达亮点' : '可以更清楚'}</span>
+                <blockquote>“{item.text}”</blockquote>
+                <p>{item.feedback}</p>
+              </article>)}</div>
+            </section>
+            <section className="feedback-next feedback-next-bottom">
+              <div><span className="next-step-label">NEXT STEP</span><h3>{results.length === 1 ? '再答一次时，试试这样做' : '下次练习，试试这样做'}</h3><p>{result.evaluation.nextStep}</p></div>
+              {results.length === 1 ? <button className="button button-primary" type="button" disabled={busy} onClick={answerAgain}>同题再答一次 <span aria-hidden="true">↗</span></button>
+                : <button className="button button-primary" type="button" disabled={busy || !!pendingSave} onClick={() => void loadTopic()}>换一题继续练习 <span aria-hidden="true">↗</span></button>}
+            </section>
           </section>
         </div>}
         </>}

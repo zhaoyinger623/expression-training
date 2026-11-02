@@ -9,7 +9,7 @@ export interface Topic {
 }
 
 export interface DimensionFeedback {
-  name: '观点与论证' | '结构与连贯' | '表达清晰度';
+  name: '观点与论证' | '结构与连贯' | '表达清晰度' | '论题回应度' | '具体性与例证' | '权衡与边界';
   score: number;
   reason: string;
   suggestion: string;
@@ -22,6 +22,7 @@ export interface Evaluation {
   userMindMap: MindMapNode[];
   referenceMindMap: MindMapNode[];
   referenceAnswer: string;
+  evidenceQuotes: { kind: 'strength' | 'improvement'; text: string; feedback: string }[];
   featuredQuote: { text: string; advice: string } | null;
   dimensions: DimensionFeedback[];
   strengths: string[];

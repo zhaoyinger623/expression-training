@@ -6,7 +6,7 @@
 
 P0：AI 生成论题（失败时使用预置题库）、用户主动换题、录音与重录、只读转写文本、结构化评估、同题两次回答对比、基本错误提示。经用户确认增加 IndexedDB 浏览器练习历史。其余 P1：按主题出题、准备提示、基于音频的语速与停顿分析。无需导出、账户或多人功能。
 
-仅依据转写文本评价观点与论证、结构与连贯、表达清晰度。语速与停顿不能从文本可靠推断，须有音频分析能力后再提供。
+仅依据转写文本评价观点与论证、结构与连贯、表达清晰度、论题回应度、具体性与例证、权衡与边界。语速与停顿不能从文本可靠推断，须有音频分析能力后再提供。
 
 ## 技术方案：方案 A
 
@@ -57,11 +57,11 @@ flowchart LR
 | --- | --- | --- |
 | Topic | id, title, description, source, createdAt | 论题；source 为 AI 或预置题库 |
 | Attempt | id, topicId, round, transcript, durationSeconds, createdAt | 一次作答；round 为 1 或 2 |
-| Evaluation | attemptId, summary, featuredQuote, dimensions, strengths, issues, nextStep | 一次作答的反馈 |
+| Evaluation | attemptId, overallScore, summary, evidenceQuotes, dimensions, strengths, issues, nextStep | 一次作答的反馈；总分为六维均分 |
 | Practice | id, topic, results, createdAt, updatedAt | 一次练习，关联一至两轮作答和反馈 |
 | DimensionFeedback | name, score, reason, suggestion | 单维度评分及具体依据 |
 
-维度固定为“观点与论证”“结构与连贯”“表达清晰度”。反馈应尽可能引用回答中的具体内容，不只给笼统分数。
+维度固定为“观点与论证”“结构与连贯”“表达清晰度”“论题回应度”“具体性与例证”“权衡与边界”。评分对短、泛、缺少例证或漏题回答从严；反馈应尽可能引用回答中的具体内容，不只给笼统分数。
 
 ## 视觉设计
 
@@ -106,7 +106,7 @@ Avoid unneccessary secondary labels and decsriptions. Let the layout do the axpl
 | R2 | 整理 NestJS 模块、加载本地环境变量、配置 CORS 与异常响应；健康检查可用 | 已完成 |
 | R3 | 实现 AI 论题接口，失败时回退预置题库 | 已完成；真实出题通过 |
 | R4 | 实现录音上传及 Qwen 转写 | 已完成；真实 WAV 转写与本地 WebM 上传通过 |
-| R5 | 实现三维评估与结构校验，反馈具有具体依据 | 已完成；真实短回答评估通过 |
+| R5 | 实现多维评估与结构校验，反馈具有具体依据 | 已完成；真实短回答评估通过 |
 | R6 | 串联一次作答接口，同步返回转写和评估 | 已完成；模拟完整流程通过 |
 | R7 | 联调前端录音、换题、结果与同题重答 | 已完成；Chrome 本地模拟浏览器全流程通过 |
 | R8 | 核对常见异常恢复、更新启动说明并交付 | 已完成，见 [验收记录](docs/acceptance.md) |
@@ -118,7 +118,7 @@ R1 只确定契约，不表示业务接口已可调用。每阶段完成后核�
 1. 建立 workspace、Turborepo、React、NestJS：根目录可启动前后端，前端能请求健康检查接口。
 2. 定义共享类型并实现论题接口：AI 可生成论题，服务失败时返回预置论题；用户可主动换题。
 3. 实现录音界面：可开始、结束、重录，并提示麦克风权限问题。
-4. 实现录音处理接口：上传录音后自动转写并评估，返回只读展示用的文本和固定结构的三维反馈。
+4. 实现录音处理接口：上传录音后自动转写并评估，返回只读展示用的文本和固定结构的六维反馈。
 5. 串联单页结果与同题重答：论题始终可见，完成两次作答并查看对应反馈，建议包含具体依据。
 6. 完善异常提示和 README：空录音、转写失败、评估失败均有清楚的恢复方式；新环境可按文档启动。
 

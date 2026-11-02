@@ -1,6 +1,6 @@
 import type { DimensionFeedback, Evaluation, MindMapNode } from '@expression/shared';
 
-const dimensionNames = ['观点与论证', '结构与连贯', '表达清晰度'];
+const dimensionNames = ['观点与论证', '结构与连贯', '表达清晰度', '论题回应度', '具体性与例证', '权衡与边界'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -17,7 +17,7 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
   }
   if ((value.userMindMap !== undefined && !Array.isArray(value.userMindMap)) ||
     (value.referenceMindMap !== undefined && !Array.isArray(value.referenceMindMap)) ||
-    (value.referenceAnswer !== undefined && !isText(value.referenceAnswer))) throw new Error('思维导图或参考答案无效');
+    (value.referenceAnswer !== undefined && (!isText(value.referenceAnswer) || (value.referenceAnswer.match(/[\u3400-\u9fff]/g)?.length ?? 0) < 500))) throw new Error('思维导图或参考答案无效');
   const parseMindMap = (items: unknown[], depth = 0): MindMapNode[] => {
     if (depth > 3 || items.length > 8) throw new Error('思维导图层级或节点过多');
     return items.map((item) => {
@@ -25,22 +25,26 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
       return { label: item.label, children: parseMindMap(item.children, depth + 1) };
     });
   };
-  if (!Array.isArray(value.dimensions) || value.dimensions.length !== 3) {
-    throw new Error('评估必须包含三个维度');
+  if (!Array.isArray(value.dimensions) || value.dimensions.length !== dimensionNames.length) {
+    throw new Error('评估必须包含六个维度');
   }
   const dimensions: DimensionFeedback[] = [];
   for (const item of value.dimensions) {
     if (!isRecord(item) ||
-      (item.name !== '观点与论证' && item.name !== '结构与连贯' && item.name !== '表达清晰度') ||
+      !dimensionNames.includes(item.name as string) ||
       typeof item.score !== 'number' || !Number.isInteger(item.score) || item.score < 0 || item.score > 10 ||
       !isText(item.reason) || !isText(item.suggestion)
     ) throw new Error('评估维度字段无效');
-    dimensions.push({ name: item.name, score: item.score, reason: item.reason, suggestion: item.suggestion });
+    dimensions.push({ name: item.name as DimensionFeedback['name'], score: item.score, reason: item.reason, suggestion: item.suggestion });
   }
-  if (new Set(dimensions.map((item) => item.name)).size !== 3) {
+  if (new Set(dimensions.map((item) => item.name)).size !== dimensionNames.length) {
     throw new Error('评估维度不能重复');
   }
   if (value.overallScore !== undefined && (typeof value.overallScore !== 'number' || !Number.isInteger(value.overallScore) || value.overallScore < 0 || value.overallScore > 10)) throw new Error('总分无效');
+  if (value.evidenceQuotes !== undefined && (!Array.isArray(value.evidenceQuotes) || value.evidenceQuotes.length > 6 || !value.evidenceQuotes.every((item) =>
+    isRecord(item) && (item.kind === 'strength' || item.kind === 'improvement') && isText(item.text) && isText(item.feedback) && transcript.includes(item.text)))) {
+    throw new Error('逐句点评必须引用回答原文');
+  }
   if (!Array.isArray(value.strengths) || !value.strengths.every(isText) ||
     !Array.isArray(value.issues) || !value.issues.every(isText)
   ) throw new Error('评估优点或问题列表无效');
@@ -55,11 +59,12 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
   }
 
   return {
-    overallScore: typeof value.overallScore === 'number' ? value.overallScore : Math.round(dimensions.reduce((sum, item) => sum + item.score, 0) / dimensions.length),
+    overallScore: Math.round(dimensions.reduce((sum, item) => sum + item.score, 0) / dimensions.length),
     summary: value.summary,
     userMindMap: parseMindMap((value.userMindMap ?? []) as unknown[]),
     referenceMindMap: parseMindMap((value.referenceMindMap ?? []) as unknown[]),
     referenceAnswer: typeof value.referenceAnswer === 'string' ? value.referenceAnswer : '',
+    evidenceQuotes: Array.isArray(value.evidenceQuotes) ? value.evidenceQuotes as Evaluation['evidenceQuotes'] : [],
     featuredQuote,
     dimensions: dimensions.sort((a, b) => dimensionNames.indexOf(a.name) - dimensionNames.indexOf(b.name)),
     strengths: value.strengths,
