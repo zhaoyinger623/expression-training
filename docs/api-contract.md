@@ -37,7 +37,11 @@
 - 参考 [Qwen-ASR 官方接口](https://help.aliyun.com/zh/model-studio/qwen-asr-api-reference)。当前保留北京地域通用域名配置；如账号要求业务空间专属域名，在 DASHSCOPE_BASE_URL 中替换，不更改代码。
 - R6 作答接口直接复用 TranscriptionService，不通过 HTTP 调用此接口，也不重复转写。
 
-## POST /api/attempts（R6 已实现）
+## POST /api/attempts/stream（流式作答）
+
+请求 multipart 字段与 `/api/attempts` 相同。响应为 `text/event-stream`，每个 `data:` 行携带一个 JSON 事件：`transcript`（完整转写文本）、`status`（进入评估阶段）、`complete`（完整 `SubmitAttemptResponse`）或 `error`（统一错误对象）。转写阶段完成即推送文本并开始评估，客户端分别展示转写和评估进度。流结束前保持连接；代理需关闭缓冲。
+
+## POST /api/attempts（兼容同步作答）
 
 请求使用 `multipart/form-data`，浏览器自动生成 Content-Type boundary：
 
@@ -51,7 +55,7 @@
 - metadata 文本字段最大 16 KiB；录音格式与独立转写入口共用上传校验。metadata 的轮次和时长必须为 JSON 数字，不接受数字字符串。
 - 评估配置缺失时在转写前返回 503，避免无用转写；转写失败或为空时不调用评估。评估失败时返回对应错误，不返回部分作答结果。
 - 每次成功生成独立 Attempt ID。Practice.id 仅由前端归档使用，不再属于 metadata；后端不保存练习或维护 Practice。
-- 上传后同步完成转写和评估，再返回 HTTP 201、`SubmitAttemptResponse`。
+- 上传后同步完成转写和评估，再返回 HTTP 201、`SubmitAttemptResponse`。交互页面使用流式端点。
 - `attempt.topicId` 对应提交的 topic.id；`evaluation.attemptId` 对应返回的 attempt.id；ID 和 createdAt 由服务端生成。
 - 转写文本只读；不开放文字替代作答接口。按所选 ASR 能力尽量保留原话，避免额外润色。
 - 空白转写返回 `EMPTY_TRANSCRIPT`，不进入评估。失败时不返回伪造评分，浏览器保留本次录音供用户主动重试；重新提交会重新调用转写与评估。
@@ -72,6 +76,7 @@
 ## 评估结果
 
 - dimensions 固定三个维度：观点与论证、结构与连贯、表达清晰度；每个维度恰好一次，score 为 0–10 整数。
+- overallScore 为 0–10 整数；userMindMap 和 referenceMindMap 为最多 4 层、每层最多 8 个节点的树；referenceAnswer 为参考文字答案。
 - 每个维度提供 reason 和 suggestion；strengths、issues 为简短字符串列表，nextStep 给出最重要的一条练习建议。
 - summary 对应页面反馈标题；featuredQuote 对应引用原文与建议，引用必须来自 transcript，找不到合适引用时为 null。
 - 短回答或偏题回答仍给有依据的反馈；不凭文本推断语速、停顿或口音。

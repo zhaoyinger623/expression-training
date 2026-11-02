@@ -100,6 +100,25 @@ button:focus-visible, a:focus-visible { outline: 3px solid #707070; outline-offs
 .recording-actions { display: flex; justify-content: center; gap: 16px; }
 .text-button { margin-top: 20px; padding: 12px; border: 0; background: transparent; color: var(--text-muted); text-decoration: underline; text-underline-offset: 4px; }
 .answer-heading .practice-focus { margin: 18px auto 0; max-width: 600px; color: var(--text); }
+.overall-score { display: flex; align-items: center; justify-content: space-between; max-width: 360px; margin: 0 0 38px; padding: 22px 26px; border-radius: 14px; background: #222; color: #fff; }
+.overall-score span { font-size: 16px; }
+.overall-score strong { font-size: 36px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.overall-score small { font-size: 14px; color: #c9c9c5; }
+.stream-progress { margin-top: 24px; padding: 16px 18px; border-radius: 12px; background: var(--mic-surface); text-align: left; }
+.stream-progress p { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 1.75; }
+.stream-progress .stream-transcript { margin-top: 8px; color: var(--text); white-space: pre-wrap; }
+.mindmap-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 56px; }
+.mindmap-view { padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.mindmap-view h3, .reference-answer h3 { margin: 0 0 20px; font-size: 19px; }
+.mindmap { display: grid; grid-template-columns: minmax(120px, .7fr) 1.3fr; align-items: center; gap: 18px; }
+.mindmap-center { padding: 15px; border-radius: 12px; background: var(--brand); color: white; text-align: center; line-height: 1.5; }
+.mindmap ul { margin: 0; padding-left: 18px; list-style: none; }
+.mindmap > ul { border-left: 1px solid #c9c9c5; }
+.mindmap li { position: relative; margin: 8px 0; padding-left: 14px; line-height: 1.55; }
+.mindmap li::before { position: absolute; left: -1px; top: .8em; width: 10px; content: ''; border-top: 1px solid #c9c9c5; }
+.mindmap li span { display: inline-block; padding: 8px 11px; border-radius: 8px; background: #f1f1ee; font-size: 14px; }
+.reference-answer { margin-top: 22px; padding: 26px; border-radius: 14px; background: white; }
+.reference-answer p { margin: 0; color: #444; font-size: 16px; line-height: 1.9; white-space: pre-wrap; }
 .feedback-main-single { grid-template-columns: 1fr; }
 .feedback-next .button { margin-top: 24px; }
 .feedback-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 24px; margin-top: 32px; }
@@ -135,6 +154,10 @@ button:focus-visible, a:focus-visible { outline: 3px solid #707070; outline-offs
   .transcript-text { font-size: 15px; line-height: 1.85; }
   .feedback-view { padding-top: 50px; }
   .feedback-main { grid-template-columns: 1fr; }
+  .mindmap-grid { grid-template-columns: 1fr; }
+  .mindmap { grid-template-columns: minmax(100px, .6fr) 1.4fr; gap: 10px; }
+  .mindmap-view { padding: 20px; }
+  .overall-score { max-width: none; }
   .feedback-quote, .feedback-next { min-height: 0; padding: 26px; }
   .feedback-next .button { margin-top: 28px; }
   .site-footer { gap: 12px; line-height: 1.4; }

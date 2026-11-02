@@ -17,13 +17,28 @@ export interface DimensionFeedback {
 
 export interface Evaluation {
   attemptId: string;
+  overallScore: number;
   summary: string;
+  userMindMap: MindMapNode[];
+  referenceMindMap: MindMapNode[];
+  referenceAnswer: string;
   featuredQuote: { text: string; advice: string } | null;
   dimensions: DimensionFeedback[];
   strengths: string[];
   issues: string[];
   nextStep: string;
 }
+
+export interface MindMapNode {
+  label: string;
+  children: MindMapNode[];
+}
+
+export type AttemptStreamEvent =
+  | { type: 'transcript'; transcript: string }
+  | { type: 'status'; stage: 'evaluating' }
+  | { type: 'complete'; result: SubmitAttemptResponse }
+  | { type: 'error'; error: ApiErrorResponse };
 
 export interface Attempt {
   id: string;

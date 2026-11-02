@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Practice, SubmitAttemptResponse, Topic } from '@expression/shared';
+import type { MindMapNode, Practice, SubmitAttemptResponse, Topic } from '@expression/shared';
 import { getTopic, submitAttempt } from './api';
 import { getPractice, savePractice } from './practiceStore';
 import { useRecorder } from './useRecorder';
@@ -16,10 +16,22 @@ function MicIcon({ recording }: { recording: boolean }) {
   );
 }
 
+function MindMap({ title, center, nodes }: { title: string; center: string; nodes: MindMapNode[] }) {
+  return <section className="mindmap-view" aria-label={title}>
+    <h3>{title}</h3>
+    <div className="mindmap"><strong className="mindmap-center">{center}</strong><ul>{nodes.map((node, index) => <MindMapBranch key={`${node.label}-${index}`} node={node} />)}</ul></div>
+  </section>;
+}
+
+function MindMapBranch({ node }: { node: MindMapNode }) {
+  return <li><span>{node.label}</span>{node.children.length > 0 && <ul>{node.children.map((child, index) => <MindMapBranch key={`${child.label}-${index}`} node={child} />)}</ul>}</li>;
+}
+
 function App() {
   const [topic, setTopic] = useState<Topic | null>(null);
   const [loadingTopic, setLoadingTopic] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [streamTranscript, setStreamTranscript] = useState('');
   const [error, setError] = useState('');
   const [results, setResults] = useState<SubmitAttemptResponse[]>([]);
   const [selected, setSelected] = useState(0);
@@ -80,9 +92,10 @@ function App() {
     setSubmitting(true);
     setError('');
     try {
+      setStreamTranscript('');
       const response = await submitAttempt(recorder.audio, {
         topic, round: results.length === 0 ? 1 : 2, durationSeconds: recorder.seconds,
-      });
+      }, setStreamTranscript);
       const nextResults = [...results, response];
       setResults(nextResults);
       setSelected(results.length);
@@ -196,7 +209,7 @@ function App() {
                   {submitting ? '处理中…' : error ? '重试提交' : '提交回答'}
                 </button>
               </div>
-              {submitting && <p className="status-text" role="status">正在转写并评估，请稍候…</p>}
+              {submitting && <div className="stream-progress" role="status"><p>{streamTranscript ? '转写完成，正在生成评估…' : '正在转写录音…'}</p>{streamTranscript && <p className="stream-transcript">{streamTranscript}</p>}</div>}
             </div>}
             {results.length === 1 && !recording && !requesting && !submitting && <button className="text-button" type="button" onClick={() => { recorder.reset(); setError(''); setShowAnswer(false); }}>返回首次反馈</button>}
           </div>
@@ -223,6 +236,7 @@ function App() {
           </section>
           <section className="feedback-view" aria-labelledby="feedback-title">
             <div className="feedback-heading"><h2 id="feedback-title" tabIndex={-1} ref={feedbackTitle}>{result.evaluation.summary}</h2></div>
+            <section className="overall-score" aria-label="总分"><span>本次总分</span><strong>{result.evaluation.overallScore}<small> / 10</small></strong></section>
             <div className={`feedback-main ${!result.evaluation.featuredQuote ? 'feedback-main-single' : ''}`}>
               {result.evaluation.featuredQuote && <div className="feedback-quote"><span className="quote-mark" aria-hidden="true">“</span><blockquote>{result.evaluation.featuredQuote.text}</blockquote><p>{result.evaluation.featuredQuote.advice}</p></div>}
               <div className="feedback-next">
@@ -240,6 +254,11 @@ function App() {
               <div className="dimension-top"><h3>{item.name}</h3><span>{item.score}<small> / 10</small></span></div>
               <p>{item.reason}</p><p className="dimension-suggestion">{item.suggestion}</p>
             </article>)}</div>
+            <div className="mindmap-grid">
+              <MindMap title="你的回答与待改进点" center={topic?.title ?? '你的回答'} nodes={result.evaluation.userMindMap} />
+              <MindMap title="参考回答思路" center="清晰表达的结构" nodes={result.evaluation.referenceMindMap} />
+            </div>
+            <section className="reference-answer"><h3>参考文字答案</h3><p>{result.evaluation.referenceAnswer}</p></section>
           </section>
         </div>}
         </>}

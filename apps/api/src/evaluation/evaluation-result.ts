@@ -1,4 +1,4 @@
-import type { DimensionFeedback, Evaluation } from '@expression/shared';
+import type { DimensionFeedback, Evaluation, MindMapNode } from '@expression/shared';
 
 const dimensionNames = ['观点与论证', '结构与连贯', '表达清晰度'];
 
@@ -12,9 +12,17 @@ function isText(value: unknown): value is string {
 
 /** 模型输出进入系统的唯一结构校验边界。 */
 export function parseEvaluation(value: unknown, transcript: string): Omit<Evaluation, 'attemptId'> {
-  if (!isRecord(value) || !isText(value.summary) || !isText(value.nextStep)) {
+  if (!isRecord(value) || !isText(value.summary) || !isText(value.nextStep) || !isText(value.referenceAnswer)) {
     throw new Error('评估摘要或建议无效');
   }
+  if (!Array.isArray(value.userMindMap) || !Array.isArray(value.referenceMindMap)) throw new Error('思维导图无效');
+  const parseMindMap = (items: unknown[], depth = 0): MindMapNode[] => {
+    if (depth > 3 || items.length > 8) throw new Error('思维导图层级或节点过多');
+    return items.map((item) => {
+      if (!isRecord(item) || !isText(item.label) || !Array.isArray(item.children)) throw new Error('思维导图节点无效');
+      return { label: item.label, children: parseMindMap(item.children, depth + 1) };
+    });
+  };
   if (!Array.isArray(value.dimensions) || value.dimensions.length !== 3) {
     throw new Error('评估必须包含三个维度');
   }
@@ -30,6 +38,7 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
   if (new Set(dimensions.map((item) => item.name)).size !== 3) {
     throw new Error('评估维度不能重复');
   }
+  if (value.overallScore !== undefined && (typeof value.overallScore !== 'number' || !Number.isInteger(value.overallScore) || value.overallScore < 0 || value.overallScore > 10)) throw new Error('总分无效');
   if (!Array.isArray(value.strengths) || !value.strengths.every(isText) ||
     !Array.isArray(value.issues) || !value.issues.every(isText)
   ) throw new Error('评估优点或问题列表无效');
@@ -44,7 +53,11 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
   }
 
   return {
+    overallScore: typeof value.overallScore === 'number' ? value.overallScore : Math.round(dimensions.reduce((sum, item) => sum + item.score, 0) / dimensions.length),
     summary: value.summary,
+    userMindMap: parseMindMap(value.userMindMap),
+    referenceMindMap: parseMindMap(value.referenceMindMap),
+    referenceAnswer: value.referenceAnswer,
     featuredQuote,
     dimensions: dimensions.sort((a, b) => dimensionNames.indexOf(a.name) - dimensionNames.indexOf(b.name)),
     strengths: value.strengths,

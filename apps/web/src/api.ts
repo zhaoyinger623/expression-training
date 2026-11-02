@@ -1,4 +1,4 @@
-import type { SubmitAttemptMetadata, SubmitAttemptResponse, TopicResponse } from '@expression/shared';
+import type { AttemptStreamEvent, SubmitAttemptMetadata, SubmitAttemptResponse, TopicResponse } from '@expression/shared';
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
@@ -27,10 +27,41 @@ export function getTopic(excludeTopicId?: string): Promise<TopicResponse> {
   return request(`/api/topics/random${query}`, {}, 25_000);
 }
 
-export function submitAttempt(audio: Blob, metadata: SubmitAttemptMetadata): Promise<SubmitAttemptResponse> {
+export function submitAttempt(audio: Blob, metadata: SubmitAttemptMetadata, onTranscript: (text: string) => void): Promise<SubmitAttemptResponse> {
   const form = new FormData();
   const extension = audio.type.includes('mp4') ? 'm4a' : 'webm';
   form.append('audio', audio, `recording.${extension}`);
   form.append('metadata', JSON.stringify(metadata));
-  return request('/api/attempts', { method: 'POST', body: form }, 135_000);
+  return streamAttempt(form, onTranscript);
+}
+
+async function streamAttempt(form: FormData, onTranscript: (text: string) => void): Promise<SubmitAttemptResponse> {
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/api/attempts/stream`, { method: 'POST', body: form, signal: AbortSignal.timeout(240_000) });
+  } catch {
+    throw new Error('暂时无法连接服务，请检查网络或后端是否启动。');
+  }
+  if (!response.ok || !response.body) throw new Error('提交失败，请重试。');
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let result: SubmitAttemptResponse | null = null;
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const chunks = buffer.split('\n\n');
+    buffer = chunks.pop() ?? '';
+    for (const chunk of chunks) {
+      const line = chunk.split('\n').find((part) => part.startsWith('data: '));
+      if (!line) continue;
+      const event = JSON.parse(line.slice(6)) as AttemptStreamEvent;
+      if (event.type === 'error') throw new Error(event.error.message);
+      if (event.type === 'transcript') onTranscript(event.transcript);
+      if (event.type === 'complete') result = event.result;
+    }
+    if (done) break;
+  }
+  if (!result) throw new Error('服务未返回完整评估结果，请重试。');
+  return result;
 }
