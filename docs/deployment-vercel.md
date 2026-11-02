@@ -118,6 +118,7 @@ IndexedDB 保存失败时，页面会保留反馈并提供“重试保存”，�
 
 | 现象 | 优先检查 |
 | --- | --- |
+| TS2688 / 找不到 node 类型 | 使用最新提交；后端 tsconfig 已显式配置 typeRoots，避免 TypeScript 7 临时构建目录改变类型查找位置。无需删除 types: [node] 或关闭类型检查 |
 | unused_function / src/main.ts 无匹配 | 确认部署的是修复后的最新提交；apps/api/vercel.json 不应包含 functions.src/main.ts，执行时限改在控制台设置 |
 | 构建失败、找不到 @expression/shared | 两个项目的 Root Directory 和根目录外文件访问设置；仓库包含完整 workspace |
 | 页面打开但请求 localhost | 前端 VITE_API_BASE_URL 未配置；设置后重新构建部署 |
@@ -129,3 +130,7 @@ IndexedDB 保存失败时，页面会保留反馈并提供“重试保存”，�
 | 换域名后历史为空 | IndexedDB 按网站来源隔离；使用固定生产地址 |
 
 查看后端项目的 Logs / Functions 日志定位问题，不要在日志或截图中公开 Key。此文档给出配置和预期结果，不代表已经完成云端验收。
+
+### TypeScript 7 构建兼容说明
+
+后端 `tsconfig.json` 显式设置 `typeRoots: ["./node_modules/@types"]`，相对路径以原 tsconfig 所在目录为基准。Vercel 的 TypeScript 7 适配器通过临时目录中的配置继承项目配置；若仅声明 types: ["node"]，默认类型查找可能从临时目录开始，从而触发 TS2688，即使 apps/api 已安装 @types/node。本地已复现该配置迁移后的编译错误，添加 typeRoots 后同一编译通过。[Vercel 编译器实现](https://github.com/vercel/vercel/blob/main/packages/node/src/typescript.ts)
