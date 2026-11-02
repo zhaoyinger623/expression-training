@@ -42,11 +42,12 @@ async function streamAttempt(form: FormData, onTranscript: (text: string) => voi
   } catch {
     throw new Error('暂时无法连接服务，请检查网络或后端是否启动。');
   }
-  if (!response.ok || !response.body) throw new Error('提交失败，请重试。');
+  if (!response.body) throw new Error(response.ok ? '服务没有返回处理流，请稍后重试。' : `提交失败（HTTP ${response.status}），请重试。`);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let result: SubmitAttemptResponse | null = null;
+  let streamError = '';
   while (true) {
     const { value, done } = await reader.read();
     buffer += decoder.decode(value, { stream: !done });
@@ -56,12 +57,13 @@ async function streamAttempt(form: FormData, onTranscript: (text: string) => voi
       const line = chunk.split('\n').find((part) => part.startsWith('data: '));
       if (!line) continue;
       const event = JSON.parse(line.slice(6)) as AttemptStreamEvent;
-      if (event.type === 'error') throw new Error(event.error.message);
+      if (event.type === 'error') streamError = event.error.message;
       if (event.type === 'transcript') onTranscript(event.transcript);
       if (event.type === 'complete') result = event.result;
     }
     if (done) break;
   }
+  if (streamError) throw new Error(streamError);
   if (!result) throw new Error('服务未返回完整评估结果，请重试。');
   return result;
 }

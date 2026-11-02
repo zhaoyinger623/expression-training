@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Body, Controller, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { Attempt, SubmitAttemptResponse, Topic } from '@expression/shared';
+import type { ApiErrorResponse, Attempt, SubmitAttemptResponse, Topic } from '@expression/shared';
 import { AudioUploadPipe, audioUploadOptions } from '../common/audio-upload.js';
 import type { AudioUpload } from '../common/audio-upload.js';
 import { ApiException } from '../common/api-exception.js';
@@ -14,6 +14,8 @@ interface StreamResponse {
   flushHeaders(): void;
   write(chunk: string): void;
   end(): void;
+  status(code: number): StreamResponse;
+  json(body: unknown): void;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -80,13 +82,13 @@ export class AttemptsController {
     @Body('metadata') metadata: unknown,
     @Res() response: StreamResponse,
   ): Promise<void> {
-    const data = this.parseMetadata(metadata);
     response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     response.setHeader('Cache-Control', 'no-cache, no-transform');
     response.setHeader('Connection', 'keep-alive');
     response.flushHeaders();
     const send = (event: unknown) => response.write(`data: ${JSON.stringify(event)}\n\n`);
     try {
+      const data = this.parseMetadata(metadata);
       if (!this.config.llm.apiKey || !this.config.llm.baseUrl) throw new ApiException(503, 'SERVICE_NOT_CONFIGURED', '回答评估服务尚未配置');
       const transcript = await this.transcription.transcribe(audio.buffer, audio.mimetype);
       send({ type: 'transcript', transcript });
@@ -102,6 +104,15 @@ export class AttemptsController {
     } finally {
       response.end();
     }
+  }
+
+  streamError(response: StreamResponse, status: number, body: ApiErrorResponse): void {
+    response.status(status);
+    response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    response.setHeader('Cache-Control', 'no-cache, no-transform');
+    response.flushHeaders();
+    response.write(`data: ${JSON.stringify({ type: 'error', error: body })}\n\n`);
+    response.end();
   }
 
   private parseMetadata(metadata: unknown): { topic: Topic; round: 1 | 2; durationSeconds: number } {
