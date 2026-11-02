@@ -52,6 +52,8 @@ export interface SubmitAttemptResponse {
 }
 
 export type ApiErrorCode =
+  | 'NOT_FOUND'
+  | 'HTTP_ERROR'
   | 'INVALID_REQUEST'
   | 'AUDIO_TOO_LARGE'
   | 'UNSUPPORTED_AUDIO_FORMAT'

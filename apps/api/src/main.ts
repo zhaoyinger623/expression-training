@@ -1,22 +1,13 @@
 import 'reflect-metadata';
-import { Controller, Get, Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-
-@Controller('api')
-class HealthController {
-  @Get('health')
-  health() {
-    return { status: 'ok' };
-  }
-}
-
-@Module({ controllers: [HealthController] })
-class AppModule {}
+import { AppModule } from './app.module.js';
+import { ApiConfig } from './config.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors({ origin: 'http://localhost:5173' });
-  await app.listen(3000, '127.0.0.1');
+  const config = app.get(ApiConfig);
+  app.enableCors({ origin: config.webOrigin });
+  await app.listen(config.port, '127.0.0.1');
 }
 
 void bootstrap();

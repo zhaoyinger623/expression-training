@@ -5,8 +5,8 @@
 ## 服务与配置
 
 - 转写：阿里云北京地域 `qwen3-asr-flash`，同步调用，使用 `DASHSCOPE_API_KEY`。本地已配置 Key，不代表已验证可调用或存在免费额度。
-- 出题与评估：`gpt-6-luna`。`LLM_API_KEY`、`LLM_BASE_URL` 待用户本地配置；具体接入协议在 R3 核对，不默认第三方服务与官方接口完全一致。
-- 配置模板：`apps/api/.env.example`；实际配置：`apps/api/.env`，被 Git 忽略。R2 实现环境文件加载与配置检查。
+- 出题与评估：`gpt-6-luna`。`LLM_API_KEY`、`LLM_BASE_URL` 已配置在本地，使用用户提供的 sub2api 接入地址；具体接入协议在 R3 核对，不默认第三方服务与官方接口完全一致。
+- 配置模板：`apps/api/.env.example`；实际配置：`apps/api/.env`，被 Git 忽略。R2 已实现环境文件加载与配置检查。
 - 业务接口缺少对应服务配置时返回 `SERVICE_NOT_CONFIGURED`；健康检查不依赖 AI 配置。
 - 不在 R1 调用收费 API。录音、论题与结果均不持久化；当前练习由浏览器维护。
 
@@ -53,6 +53,8 @@
 
 | HTTP | code | 含义 |
 | --- | --- | --- |
+| 404 | NOT_FOUND | 接口不存在 |
+| 其他 4xx | HTTP_ERROR | 其他 HTTP 请求错误 |
 | 400 | INVALID_REQUEST | metadata、轮次、时长或文件内容不符合要求 |
 | 413 | AUDIO_TOO_LARGE | 超过上传大小限制 |
 | 415 | UNSUPPORTED_AUDIO_FORMAT | 不支持的音频格式 |
