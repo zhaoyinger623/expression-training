@@ -27,3 +27,11 @@ pnpm build
 ```
 
 项目设计与后续顺序见 [design.md](design.md)，版本状态见 [version.md](version.md)。
+
+## 后端配置与接口
+
+R1 已确定接口契约与共享类型，详见 [docs/api-contract.md](docs/api-contract.md)。业务接口尚未实现，前端仍使用示例数据。
+
+后端配置模板位于 `apps/api/.env.example`，本地配置保存在 `apps/api/.env`。已有本地配置时保留原文件，按模板补充字段；不要覆盖已有 Key。真实密钥不提交到 Git。
+
+转写使用 Qwen3-ASR-Flash 北京地域；出题与评估使用 GPT-6 Luna，其 API Key 与服务地址待配置。R2 接入环境文件读取，R3–R6 实现业务调用。
