@@ -5,9 +5,20 @@
       "cache": false,
       "persistent": true
     },
+    "@expression/api#dev": {
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": ["PORT", "WEB_ORIGIN", "DASHSCOPE_*", "ASR_MODEL", "LLM_*"]
+    },
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
+    },
+    "@expression/web#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"],
+      "env": ["VITE_API_BASE_URL"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"]
     }
   }
 }

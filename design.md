@@ -53,7 +53,7 @@ flowchart LR
 | --- | --- | --- |
 | Topic | id, title, description, source, createdAt | 论题；source 为 AI 或预置题库 |
 | Attempt | id, topicId, round, transcript, durationSeconds, createdAt | 一次作答；round 为 1 或 2 |
-| Evaluation | attemptId, dimensions, strengths, issues, nextStep | 一次作答的反馈 |
+| Evaluation | attemptId, summary, featuredQuote, dimensions, strengths, issues, nextStep | 一次作答的反馈 |
 | DimensionFeedback | name, score, reason, suggestion | 单维度评分及具体依据 |
 
 维度固定为“观点与论证”“结构与连贯”“表达清晰度”。反馈应尽可能引用回答中的具体内容，不只给笼统分数。
@@ -97,14 +97,14 @@ Avoid unneccessary secondary labels and decsriptions. Let the layout do the axpl
 
 | 阶段 | 范围与验收 | 状态 |
 | --- | --- | --- |
-| R1 | 确定 Qwen3-ASR-Flash 转写、GPT-6 Luna 出题评估；定义共享接口类型、错误格式和配置清单，详见 [接口契约](docs/api-contract.md) | 已完成；服务配置已保存本地，连通性待验证 |
+| R1 | 确定 Qwen3-ASR-Flash 转写、GPT-6 Luna 出题评估；定义共享接口类型、错误格式和配置清单，详见 [接口契约](docs/api-contract.md) | 已完成；服务配置与少量真实调用已验证 |
 | R2 | 整理 NestJS 模块、加载本地环境变量、配置 CORS 与异常响应；健康检查可用 | 已完成 |
-| R3 | 实现 AI 论题接口，失败时回退预置题库 | 已完成；真实 sub2api 待联调 |
-| R4 | 实现录音上传及 Qwen 转写 | 后端已完成；真实浏览器音频与识别质量待 R7 联调 |
-| R5 | 实现三维评估与结构校验，反馈具有具体依据 | 服务已完成；真实反馈质量待联调 |
+| R3 | 实现 AI 论题接口，失败时回退预置题库 | 已完成；真实出题通过 |
+| R4 | 实现录音上传及 Qwen 转写 | 已完成；真实 WAV 转写与本地 WebM 上传通过 |
+| R5 | 实现三维评估与结构校验，反馈具有具体依据 | 已完成；真实短回答评估通过 |
 | R6 | 串联一次作答接口，同步返回转写和评估 | 已完成；模拟完整流程通过 |
-| R7 | 联调前端录音、换题、结果与同题重答 | 实现及本地模拟浏览器联调完成；真实模型待授权验证 |
-| R8 | 核对常见异常恢复、更新启动说明并交付 | 待开发 |
+| R7 | 联调前端录音、换题、结果与同题重答 | 已完成；Chrome 本地模拟浏览器全流程通过 |
+| R8 | 核对常见异常恢复、更新启动说明并交付 | 已完成，见 [验收记录](docs/acceptance.md) |
 
 R1 只确定契约，不表示业务接口已可调用。每阶段完成后核对差异并提交；版本记录按用户可见的阶段成果合并。
 

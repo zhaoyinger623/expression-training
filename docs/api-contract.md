@@ -1,11 +1,11 @@
 # R1：后端接口契约与配置
 
-状态：R3–R6 后端接口已实现，包括出题、独立转写及完整作答；R7 前端已接入并通过本地模拟模型联调，真实模型仍待验证。共享类型以 `packages/shared/src/index.ts` 为准。
+状态：R3–R6 后端接口已实现，包括出题、独立转写及完整作答；R7 前端已接入，R8 已通过本地浏览器全流程及少量真实模型验证，详见 [验收记录](acceptance.md)。共享类型以 `packages/shared/src/index.ts` 为准。
 
 ## 服务与配置
 
-- 转写：阿里云北京地域 `qwen3-asr-flash`，同步调用，使用 `DASHSCOPE_API_KEY`。本地已配置 Key，不代表已验证可调用或存在免费额度。
-- 出题与评估：`gpt-6-luna`。`LLM_API_KEY`、`LLM_BASE_URL` 已配置在本地，使用用户提供的 sub2api 接入地址；R3 按 OpenAI 兼容 Chat Completions 格式实现，调用 Base URL 下的 `/chat/completions`；用户提供站点的实际兼容性尚未用真实请求验证。
+- 转写：阿里云北京地域 `qwen3-asr-flash`，同步调用，使用 `DASHSCOPE_API_KEY`。R8 已通过一次真实 WAV 转写，免费额度或费用以控制台为准。
+- 出题与评估：`gpt-6-luna`。`LLM_API_KEY`、`LLM_BASE_URL` 已配置在本地，使用用户提供的 sub2api 接入地址；R3 按 OpenAI 兼容 Chat Completions 格式实现，调用 Base URL 下的 `/chat/completions`；R8 已用一次真实出题与一次真实评估验证当前站点的此协议。
 - 配置模板：`apps/api/.env.example`；实际配置：`apps/api/.env`，被 Git 忽略。R2 已实现环境文件加载与配置检查。
 - 业务接口缺少对应服务配置时返回 `SERVICE_NOT_CONFIGURED`；健康检查不依赖 AI 配置。
 - 不在 R1 调用收费 API。录音、论题与结果均不持久化；当前练习由浏览器维护。
@@ -67,7 +67,7 @@
 - featuredQuote 必须显式为 null 或包含 text、advice 的对象；text 必须为 transcript 中逐字连续片段。缺失字段、重复维度、越界分数、编造引用均返回 502 EVALUATION_FAILED，不伪造反馈补齐。
 - attemptId 始终由传入的 Attempt 关联，忽略模型输出中的同名字段。空优点或问题列表合法，避免短回答被强行编造优点。
 - 缺配置返回 503 SERVICE_NOT_CONFIGURED，超时返回 504 UPSTREAM_TIMEOUT，其余上游与格式错误返回 502 EVALUATION_FAILED；不暴露上游原始错误或记录回答日志。
-- 已通过模拟响应验证模块注入、请求格式、结构与引用校验、失败映射。真实 sub2api 协议兼容性、指令遵循效果及中文反馈质量仍待实际联调。
+- 已通过模拟响应验证模块注入、请求格式、结构与引用校验、失败映射。R8 已验证真实 sub2api 调用及一条中文短回答反馈，更多样本的指令遵循效果和反馈质量仍需积累。
 
 ## 评估结果
 
@@ -94,7 +94,7 @@
 | 503 | SERVICE_NOT_CONFIGURED | 作答所需服务配置缺失 |
 | 500 | INTERNAL_ERROR | 未预期的服务端错误 |
 
-R4 已验证 multipart 传输、声明格式和大小限制；尚未调用真实 Qwen 解码浏览器录音。真实音频兼容性在 R7 联调；如不兼容，先调整录制格式，再考虑是否需要音频转换依赖。
+R4–R8 已验证 multipart 传输、声明格式和大小限制、Chrome 原生 WebM 录制与上传，以及真实 Qwen WAV 转写。本次未追加真实 WebM 解码调用；若实机不兼容，先调整录制格式，再考虑是否需要音频转换依赖。
 
 ## R7 前端接入
 

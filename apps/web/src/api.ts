@@ -4,19 +4,22 @@ const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 async function request<T>(path: string, options: RequestInit, timeout: number): Promise<T> {
   let response: Response;
+  let body: unknown;
   try {
     response = await fetch(`${baseUrl}${path}`, { ...options, signal: AbortSignal.timeout(timeout) });
+    body = await response.json();
   } catch (error) {
-    if (error instanceof Error && error.name === 'TimeoutError') {
+    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
       throw new Error('等待时间过长，请重试。');
     }
+    if (error instanceof SyntaxError) throw new Error('服务响应格式不正确，请稍后重试。');
     throw new Error('暂时无法连接服务，请检查网络或后端是否启动。');
   }
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(typeof body?.message === 'string' ? body.message : '请求失败，请稍后重试。');
+    const message = typeof body === 'object' && body !== null && 'message' in body ? body.message : null;
+    throw new Error(typeof message === 'string' ? message : '请求失败，请稍后重试。');
   }
-  return response.json() as Promise<T>;
+  return body as T;
 }
 
 export function getTopic(excludeTopicId?: string): Promise<TopicResponse> {
