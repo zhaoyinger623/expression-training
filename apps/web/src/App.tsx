@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { SubmitAttemptResponse, Topic } from '@expression/shared';
-import { getPractice, getTopic, submitAttempt } from './api';
+import type { Practice, SubmitAttemptResponse, Topic } from '@expression/shared';
+import { getTopic, submitAttempt } from './api';
+import { getPractice, savePractice } from './practiceStore';
 import { useRecorder } from './useRecorder';
 import { HistoryPanel } from './HistoryPanel';
 
@@ -27,11 +28,15 @@ function App() {
   const [practiceId, setPracticeId] = useState<string>(() => crypto.randomUUID());
   const [showHistory, setShowHistory] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState('');
+  const [pendingSave, setPendingSave] = useState<Practice | null>(null);
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
   const recorder = useRecorder();
   const feedbackTitle = useRef<HTMLHeadingElement>(null);
   const recording = recorder.phase === 'recording';
   const requesting = recorder.phase === 'requesting';
-  const busy = loadingTopic || submitting || recording || requesting || openingId !== null;
+  const busy = loadingTopic || submitting || recording || requesting || saving || openingId !== null;
   const result = results[selected];
 
   async function loadTopic() {
@@ -44,6 +49,7 @@ function App() {
       setSelected(0);
       setShowAnswer(true);
       setPracticeId(crypto.randomUUID());
+      setCreatedAt('');
       recorder.reset();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '获取论题失败，请重试。');
@@ -75,16 +81,35 @@ function App() {
     setError('');
     try {
       const response = await submitAttempt(recorder.audio, {
-        practiceId, topic, round: results.length === 0 ? 1 : 2, durationSeconds: recorder.seconds,
+        topic, round: results.length === 0 ? 1 : 2, durationSeconds: recorder.seconds,
       });
-      setResults((previous) => [...previous, response]);
+      const nextResults = [...results, response];
+      setResults(nextResults);
       setSelected(results.length);
       setShowAnswer(false);
       recorder.reset();
+      const now = new Date().toISOString();
+      const started = createdAt || now;
+      setCreatedAt(started);
+      await persist({ id: practiceId, topic, results: nextResults, createdAt: started, updatedAt: now });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '提交失败，请重试。');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function persist(practice: Practice) {
+    setSaving(true);
+    setSaveError('');
+    try {
+      await savePractice(practice);
+      setPendingSave(null);
+    } catch (cause) {
+      setPendingSave(practice);
+      setSaveError(cause instanceof Error ? cause.message : '本地历史保存失败。');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -100,6 +125,7 @@ function App() {
     try {
       const practice = await getPractice(id);
       setPracticeId(practice.id);
+      setCreatedAt(practice.createdAt);
       setTopic(practice.topic);
       setResults(practice.results);
       setSelected(practice.results.length - 1);
@@ -119,16 +145,21 @@ function App() {
     <div className="app-shell">
       <header className="site-header"><a className="site-name" href="#main">言序</a>
         <nav className="header-actions" aria-label="练习导航">
-          <button type="button" disabled={busy} aria-pressed={!showHistory} onClick={() => { setError(''); setShowHistory(false); }}>练习</button>
-          <button type="button" disabled={busy} aria-pressed={showHistory} onClick={() => { setError(''); setShowHistory(true); }}>历史记录</button>
+          <button type="button" disabled={busy || !!pendingSave} aria-pressed={!showHistory} onClick={() => { setError(''); setShowHistory(false); }}>练习</button>
+          <button type="button" disabled={busy || !!pendingSave} aria-pressed={showHistory} onClick={() => { setError(''); setShowHistory(true); }}>历史记录</button>
         </nav>
       </header>
       <main id="main" className="main-content">
+        {pendingSave && <div className="error-notice" role="alert">
+          <p>{saveError || '正在保存本地历史…'} 回答与反馈已生成，历史尚未保存。请在离开或刷新页面前重试保存。</p>
+          <button className="text-button" type="button" disabled={busy} onClick={() => void persist(pendingSave)}>{saving ? '保存中…' : '重试保存'}</button>
+          <button className="text-button" type="button" disabled={busy} onClick={() => { setPendingSave(null); setSaveError(''); }}>暂不保存，继续使用</button>
+        </div>}
         {showHistory ? <HistoryPanel onOpen={(id) => void openPractice(id)} openingId={openingId} detailError={error} /> : <>
         <section className={`topic-view ${!showAnswer ? 'topic-view-compact' : ''}`} aria-labelledby="topic-title" aria-busy={loadingTopic}>
           <div className="topic-topline">
             <p className="intro-line">一次练习，从一个值得思考的问题开始。</p>
-            <button className="next-topic" type="button" disabled={busy} onClick={() => void loadTopic()}>
+            <button className="next-topic" type="button" disabled={busy || !!pendingSave} onClick={() => void loadTopic()}>
               {loadingTopic ? '获取中…' : '换一题'} <span aria-hidden="true">↗</span>
             </button>
           </div>
@@ -144,7 +175,7 @@ function App() {
         {topic && showAnswer && <section className="answer-view" aria-labelledby="answer-title">
           <div className="answer-heading">
             <h2 id="answer-title">{results.length ? '把想法再说一次' : '把想法说出来'}</h2>
-            <p id="recording-hint">建议作答 1–3 分钟，3 分钟时自动结束。录音上限 6 MiB。</p>
+            <p id="recording-hint">建议作答 1–3 分钟，3 分钟时自动结束。录音上限 4 MiB。</p>
             {results.length === 1 && <p className="practice-focus">本次重点：{results[0].evaluation.nextStep}</p>}
           </div>
           <div className="answer-center">
@@ -197,8 +228,8 @@ function App() {
               <div className="feedback-next">
                 <h3>{results.length === 1 ? '再答一次时，试试这样做' : '下次练习，试试这样做'}</h3>
                 <p>{result.evaluation.nextStep}</p>
-                {results.length === 1 ? <button className="button button-primary" type="button" disabled={loadingTopic} onClick={answerAgain}>同题再答一次 <span aria-hidden="true">↗</span></button>
-                  : <button className="button button-primary" type="button" disabled={loadingTopic} onClick={() => void loadTopic()}>换一题继续练习 <span aria-hidden="true">↗</span></button>}
+                {results.length === 1 ? <button className="button button-primary" type="button" disabled={busy} onClick={answerAgain}>同题再答一次 <span aria-hidden="true">↗</span></button>
+                  : <button className="button button-primary" type="button" disabled={busy || !!pendingSave} onClick={() => void loadTopic()}>换一题继续练习 <span aria-hidden="true">↗</span></button>}
               </div>
             </div>
             <div className="feedback-details">

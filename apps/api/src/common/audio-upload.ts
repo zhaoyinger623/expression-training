@@ -7,7 +7,7 @@ export interface AudioUpload {
 }
 
 export const audioUploadOptions = {
-  limits: { fileSize: 6 * 1024 * 1024, files: 1, fields: 1, fieldSize: 16 * 1024 },
+  limits: { fileSize: 4 * 1024 * 1024, files: 1, fields: 1, fieldSize: 16 * 1024 },
 };
 
 /** 两个录音入口共用校验，内部转写服务直接接收已校验的音频。 */

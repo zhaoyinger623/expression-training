@@ -8,7 +8,7 @@
     "@expression/api#dev": {
       "cache": false,
       "persistent": true,
-      "passThroughEnv": ["PORT", "WEB_ORIGIN", "SQLITE_PATH", "DASHSCOPE_*", "ASR_MODEL", "LLM_*"]
+      "passThroughEnv": ["PORT", "WEB_ORIGIN", "DASHSCOPE_*", "ASR_MODEL", "LLM_*"]
     },
     "build": {
       "dependsOn": ["^build"],

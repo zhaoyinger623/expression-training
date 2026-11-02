@@ -46,7 +46,6 @@ export interface TranscriptionResponse {
 
 /** multipart 的 metadata 字段以 JSON 字符串发送，audio 字段为录音文件。 */
 export interface SubmitAttemptMetadata {
-  practiceId: string;
   topic: Topic;
   round: 1 | 2;
   durationSeconds: number;

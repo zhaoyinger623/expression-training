@@ -4,7 +4,7 @@
 
 让单个用户通过辩证性论题、录音作答和有依据的 AI 反馈练习表达。首版流程：获取论题 → 录音 → 自动转写与评估 → 在同一页面阅读回答文本和反馈 → 同题再答一次。
 
-P0：AI 生成论题（失败时使用预置题库）、用户主动换题、录音与重录、只读转写文本、结构化评估、同题两次回答对比、基本错误提示。经用户确认增加 SQLite 本地练习历史。其余 P1：按主题出题、准备提示、基于音频的语速与停顿分析。无需导出、账户或多人功能。
+P0：AI 生成论题（失败时使用预置题库）、用户主动换题、录音与重录、只读转写文本、结构化评估、同题两次回答对比、基本错误提示。经用户确认增加 IndexedDB 浏览器练习历史。其余 P1：按主题出题、准备提示、基于音频的语速与停顿分析。无需导出、账户或多人功能。
 
 仅依据转写文本评价观点与论证、结构与连贯、表达清晰度。语速与停顿不能从文本可靠推断，须有音频分析能力后再提供。
 
@@ -14,7 +14,7 @@ P0：AI 生成论题（失败时使用预置题库）、用户主动换题、录
 - 前端：React + Vite，负责单页论题展示、浏览器录音、只读转写文本、反馈和结果对比。
 - 后端：NestJS，同步调用 AI 出题、语音转写和评估服务。单次录音上限暂定 3 分钟，避免请求等待过长。
 - 提交录音后，后端同步完成转写与评估，并返回原始转写文本和反馈。用户可阅读转写文本，但不能编辑或借由文字输入代替口头作答。音频在处理完成后不持久保存。
-- 当前页面状态由 React 维护；成功作答后同步写入后端 SQLite。刷新后可从历史记录恢复，一轮的练习可继续第二轮。数据库保存在运行后端的电脑上，默认 apps/api/data/practice.sqlite。
+- 当前页面状态由 React 维护；成功作答后由前端写入 IndexedDB。刷新后可从当前浏览器历史恢复，一轮的练习可继续第二轮。后端无状态，不保存历史。
 - 外部数据仅在 API 边界校验。AI 评估结果在服务端校验为固定结构，再交给前端使用。
 
 ### 目录
@@ -26,7 +26,6 @@ apps/
     src/topics/        出题与预置题库
     src/transcription/ 录音转写
     src/evaluation/    回答评估
-    src/practices/     SQLite 存储与历史读取
 packages/
   shared/              前后端共享的数据类型
 pnpm-workspace.yaml
@@ -44,8 +43,9 @@ flowchart LR
   API --> Transcription[transcription]
   API --> Evaluation[evaluation]
   API --> Attempts[attempts]
-  Attempts --> Practices[practices]
-  Practices --> SQLite[(SQLite)]
+  Web --> IndexedDB[(浏览器 IndexedDB)]
+  Attempts --> Transcription
+  Attempts --> Evaluation
   Topics --> AI[AI 服务]
   Transcription --> AI
   Evaluation --> AI
@@ -122,8 +122,12 @@ R1 只确定契约，不表示业务接口已可调用。每阶段完成后核�
 5. 串联单页结果与同题重答：论题始终可见，完成两次作答并查看对应反馈，建议包含具体依据。
 6. 完善异常提示和 README：空录音、转写失败、评估失败均有清楚的恢复方式；新环境可按文档启动。
 
-## SQLite 本地历史
+## IndexedDB 浏览器历史与 Vercel
 
-采用 better-sqlite3，不引入 ORM 或独立数据库服务。`practices` 表包含 `id TEXT PRIMARY KEY`、`topic_json TEXT`、`results_json TEXT`、`created_at TEXT`、`updated_at TEXT`，其余字段均非空。每次成功作答原子更新一条练习记录，同轮重试覆盖该轮结果；独立练习即使题目相同也使用不同 ID。列表按更新时间倒序，每页 20 条。
+浏览器数据库 `yanxu`，版本 1，object store 为 `practices`，以 Practice.id 为 key。每次成功作答后以一次 readwrite 事务保存完整 Practice；results 最多两轮，后续作答使用同一练习 ID 更新。列表按更新时间倒序，每页展示 20 条。针对单用户小数据量，读取后在内存排序分页，不额外引入索引或依赖。
 
-不保存音频，不加入删除、导出、账户或云同步功能。原 R1–R8 验收是历史阶段记录；本次扩展构建通过，未追加真实模型调用或运行自动化测试。
+Practice.id 只用于浏览器归档，不再发送给后端。服务端校验 round 为 1 或 2，不查询历史；前端负责首轮、第二轮及结果对比。AI 请求失败不写入历史；本地写入失败保留已生成反馈，允许只重试保存，也可明确放弃保存后继续使用。
+
+前端与 NestJS 分别作为两个 Vercel 项目部署。NestJS 使用官方可识别的 src/main.ts 入口，监听平台 PORT；maxDuration 为 150 秒，上游转写与评估各 60 秒，前端等待 135 秒。WEB_ORIGIN 规范化为一个精确来源，不开放通配跨域。录音上传上限为 4 MiB，metadata 上限 16 KiB，给平台 4.5 MB 请求体限制预留空间。部署步骤见 [Vercel 指南](docs/deployment-vercel.md)。
+
+不保存音频，不加入删除、导出、账户或云同步。旧 SQLite 文件不删除、不自动迁移；浏览器历史隔离到当前来源和设备，清除站点数据可能丢失。原 R1–R8 验收属于历史阶段，本次仅执行构建及静态核对，未追加真实模型调用或自动化测试。

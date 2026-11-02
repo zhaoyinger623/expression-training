@@ -17,7 +17,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     } else if (status === 400) {
       body = { code: 'INVALID_REQUEST', message: '请求格式不正确' };
     } else if (status === 413) {
-      body = { code: 'AUDIO_TOO_LARGE', message: '录音文件不能超过 6 MiB' };
+      body = { code: 'AUDIO_TOO_LARGE', message: '录音文件不能超过 4 MiB' };
     } else {
       body = status >= 500
         ? { code: 'INTERNAL_ERROR', message: '服务暂时无法完成请求，请稍后重试' }

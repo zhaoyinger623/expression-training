@@ -1,4 +1,4 @@
-import type { Practice, PracticeHistoryResponse, SubmitAttemptMetadata, SubmitAttemptResponse, TopicResponse } from '@expression/shared';
+import type { SubmitAttemptMetadata, SubmitAttemptResponse, TopicResponse } from '@expression/shared';
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
@@ -33,12 +33,4 @@ export function submitAttempt(audio: Blob, metadata: SubmitAttemptMetadata): Pro
   form.append('audio', audio, `recording.${extension}`);
   form.append('metadata', JSON.stringify(metadata));
   return request('/api/attempts', { method: 'POST', body: form }, 135_000);
-}
-
-export function getPracticeHistory(offset = 0): Promise<PracticeHistoryResponse> {
-  return request(`/api/practices?offset=${offset}`, {}, 10_000);
-}
-
-export function getPractice(id: string): Promise<Practice> {
-  return request(`/api/practices/${encodeURIComponent(id)}`, {}, 10_000);
 }

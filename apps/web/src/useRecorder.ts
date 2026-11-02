@@ -63,9 +63,9 @@ export function useRecorder() {
         recorder.current = null;
         if (failed) return;
         const blob = new Blob(chunks, { type: recording.mimeType });
-        if (!blob.size || blob.size > 6 * 1024 * 1024) {
+        if (!blob.size || blob.size > 4 * 1024 * 1024) {
           setPhase('idle');
-          setError(blob.size ? '录音超过 6 MiB，请重新录制较短的回答。' : '没有录到声音数据，请重新录音。');
+          setError(blob.size ? '录音超过 4 MiB，请重新录制较短的回答。' : '没有录到声音数据，请重新录音。');
           return;
         }
         setAudio(blob);

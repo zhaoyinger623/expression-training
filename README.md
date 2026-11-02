@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-R1–R8 已完成实现与首轮验收：获取论题、浏览器录音、回听与重录、自动转写和三维评估、同题两轮回答对比。页面使用后端返回的内容，不再展示静态示例。新增 SQLite 本地练习历史：成功作答后自动保存论题、转写文本与反馈，刷新或重启后可从历史记录打开；不保存音频。
+R1–R8 已完成实现与首轮验收：获取论题、浏览器录音、回听与重录、自动转写和三维评估、同题两轮回答对比。页面使用后端返回的内容，不再展示静态示例。新增 IndexedDB 浏览器练习历史：成功作答后自动保存论题、转写文本与反馈，刷新或重新打开同域名网站后可从历史记录打开；不保存音频。
 
 构建、本地模拟模型的 Chrome 浏览器全流程，以及经授权的真实出题、转写和评估各一次均已通过。7.5 秒中文合成 WAV 转写与原文一致；Chrome 原生 WebM 录制和上传已在模拟模型链路通过。真实人声、噪声口音、WebM 的真实模型解码及其他浏览器仍需实际体验确认，详见 [验收记录](docs/acceptance.md)。
 
@@ -19,7 +19,6 @@ R1–R8 已完成实现与首轮验收：获取论题、浏览器录音、回听
 | --- | --- |
 | DASHSCOPE_API_KEY / DASHSCOPE_BASE_URL / ASR_MODEL | 北京地域 Qwen3-ASR-Flash 转写 |
 | LLM_API_KEY / LLM_BASE_URL / LLM_MODEL | sub2api 接入的 GPT-6 Luna 出题与评估 |
-| SQLITE_PATH | 数据库路径，默认 apps/api/data/practice.sqlite；相对路径以 apps/api 为基准 |
 | PORT / WEB_ORIGIN | 后端端口和允许的前端来源，默认 3000 与 http://localhost:5173 |
 
 后端从固定的 `apps/api/.env` 加载配置，不依赖启动目录；系统环境变量优先。端口和已填写的 URL 不合法时启动失败，缺少 AI 配置不影响健康检查。
@@ -49,17 +48,23 @@ pnpm build
 4. 点击“同题再答一次”，第二次提交后查看两轮分数变化并切换各自全文与反馈。
 5. 点击“换一题”后清空当前练习并获取新题；换题失败时保留原来的练习。
 
-录音限 6 MiB，只通过麦克风作答，无文字输入替代入口。录音需要 localhost 或 HTTPS 以及支持 MediaRecorder 的浏览器；优先录制 WebM/Opus，支持时回退 MP4。已验证 Chrome，其他浏览器仍需实际设备确认。
+录音限 4 MiB，只通过麦克风作答，无文字输入替代入口。录音需要 localhost 或 HTTPS 以及支持 MediaRecorder 的浏览器；优先录制 WebM/Opus，支持时回退 MP4。已验证 Chrome，其他浏览器仍需实际设备确认。
 
 提交失败时录音留在当前页面，可回听、重录或重试；重试会重新执行模型调用。处理期间禁止重复提交和换题。两次上游调用各限时 60 秒，前端等待上限为 135 秒。
 
 ## 本地数据存储
 
-后端通过 better-sqlite3 内嵌 SQLite，用户无需安装 SQLite 软件或启动数据库服务。`pnpm install` 会安装数据库依赖；首次启动后端时自动创建数据库及目录。依赖优先使用预编译包，不支持的运行环境可能需要本机编译工具。
+历史通过浏览器原生 IndexedDB 保存，无需安装数据库或开通云数据库。成功作答后保存论题、一至两轮转写文本与反馈、创建和更新时间；不保存音频。页眉“历史记录”可分页查看并恢复反馈，只有一轮的练习可继续第二轮。历史读取不请求后端，也不调用 AI。
 
-默认文件为 `apps/api/data/practice.sqlite`，已加入 Git 忽略。每次练习保存论题、一至两轮转写文本与评估、创建和更新时间；失败的作答不新增记录。页眉“历史记录”可分页查看并恢复反馈，只有一轮的练习可继续第二轮。刷新会重置当前页面，但不会删除数据库中的历史。
+数据属于当前设备、浏览器和网站来源（协议、域名、端口）。刷新和正常关闭浏览器后通常保留；清除站点数据、隐私模式结束或浏览器存储回收可能导致丢失。localhost、生产域名及不同预览域名的历史不共享，也不跨设备同步。
 
-备份或迁移时，先停止后端，再复制该数据库文件。`SQLITE_PATH` 可配置其他目录，后端须有读写权限。数据保存在运行 NestJS 的电脑上；若后端部署在服务器，数据库也在服务器上，不会自动保存到访问者的电脑。音频始终不落盘。
+保存失败时仍展示回答和反馈，并提供“重试保存”；该操作仅写入本地，不会重复调用 AI。“暂不保存，继续使用”允许继续练习，但未保存结果在刷新后丢失。原 `apps/api/data/practice.sqlite` 文件保留并继续被 Git 忽略，不再读写、不自动迁移；旧 `SQLITE_PATH` 配置不再生效。
+
+本地保存只涉及历史归档。转写和评估仍将录音或文本发送给后端及 AI 服务。
+
+## 部署到 Vercel
+
+采用同一个 GitHub 仓库、两个 Vercel 项目：`apps/api` 部署 NestJS，`apps/web` 部署 Vite。按 [首次部署指南](docs/deployment-vercel.md) 操作，包括环境变量、域名联通和上线检查。仓库已提供各自的 `vercel.json`，未执行真实云部署。
 
 ## 后端接口
 
@@ -70,11 +75,9 @@ pnpm build
 | GET /api/health | 健康检查 |
 | GET /api/topics/random | 获取论题，可附带 excludeTopicId |
 | POST /api/transcriptions | 独立转写验收，multipart 字段 audio、durationSeconds |
-| GET /api/practices | 历史列表，每页 20 条，可附带 offset |
-| GET /api/practices/:id | 读取练习及各轮反馈 |
 | POST /api/attempts | 完整作答，multipart 字段 audio、metadata |
 
-metadata 为 JSON 字符串，包含同一次练习共用的 `practiceId`、完整 `topic`、数字 `round`（1 或 2）及数字 `durationSeconds`（大于 0、不超过 180）。成功返回 HTTP 201、`{ attempt, evaluation }`；评估 ID 与作答 ID 由后端关联。主流程直接调用完整作答接口，不先调用独立转写接口。
+metadata 为 JSON 字符串，包含完整 `topic`、数字 `round`（1 或 2）及数字 `durationSeconds`（大于 0、不超过 180）。成功返回 HTTP 201、`{ attempt, evaluation }`；评估 ID 与作答 ID 由后端关联。主流程直接调用完整作答接口，不先调用独立转写接口。
 
 项目设计与 R1–R8 阶段见 [design.md](design.md)，版本状态见 [version.md](version.md)。
 
