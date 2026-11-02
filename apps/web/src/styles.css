@@ -11,9 +11,9 @@
   --text: #222222;
   --text-muted: #626262;
   --border: #e2e2de;
-  --mic: #8a4229;
-  --mic-surface: #f4e7df;
-  --mic-border: #d6a58d;
+  --mic: #555555;
+  --mic-surface: #eeeeec;
+  --mic-border: #d4d4d0;
   --content-width: 800px;
 }
 
@@ -45,9 +45,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid #707070; outline-offs
 .answer-center { display: flex; flex-direction: column; align-items: center; margin-top: 24px; }
 .mic-control { width: 104px; height: 104px; display: grid; place-items: center; border: 1px solid var(--mic-border); border-radius: 50%; background: var(--mic-surface); color: var(--mic); transition: background .18s ease, transform .18s ease; }
 .mic-control svg { width: 38px; height: 38px; }
-.mic-control:hover { background: #eed8ca; transform: scale(1.04); }
+.mic-control:hover { background: #e4e4e1; transform: scale(1.04); }
 .mic-control.is-recording { background: var(--mic); color: #fff; border-color: var(--mic); }
-.mic-control.is-recording:hover { background: #783923; }
+.mic-control.is-recording:hover { background: #444444; }
 .mic-caption { margin: 16px 0 0; color: var(--text-muted); font-size: 14px; }
 .button { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 28px; padding: 0 20px; border-radius: 10px; border: 1px solid transparent; font-weight: 600; font-size: 15px; transition: background .18s ease, transform .18s ease; }
 .button:hover { transform: translateY(-1px); }

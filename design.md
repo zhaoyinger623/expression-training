@@ -75,9 +75,9 @@ flowchart LR
 | `color.text` | `#222222` | 主要文字 |
 | `color.textMuted` | `#626262` | 次要文字 |
 | `color.border` | `#E2E2DE` | 分隔与边框 |
-| `color.mic` | `#8A4229` | 麦克风图标及录音中状态 |
-| `color.micSurface` | `#F4E7DF` | 麦克风默认背景 |
-| `color.micBorder` | `#D6A58D` | 麦克风默认边框 |
+| `color.mic` | `#555555` | 麦克风图标及录音中状态 |
+| `color.micSurface` | `#EEEEEC` | 麦克风默认背景 |
+| `color.micBorder` | `#D4D4D0` | 麦克风默认边框 |
 | `color.success` | `#15803D` | 完成状态 |
 | `color.error` | `#B91C1C` | 错误状态 |
 | `radius.card` | `16px` | 内容卡片 |
@@ -87,7 +87,7 @@ flowchart LR
 | `type.body` | `16px / 1.6` | 正文 |
 | `type.heading` | `28px / 1.3` | 页面标题 |
 
-论题、录音入口、只读回答文本和反馈位于同一页面。论题旁提供“换一题”；换题后清空当前练习状态。麦克风位于作答区中央，采用浅暖陶色圆面与深暖陶色图标，避免大块黑色压住内容；录音中使用深暖陶色实心状态。随练习状态逐步展示内容，每个状态只突出一个主操作。反馈优先呈现可执行建议和对应的回答片段，再呈现维度分数。移动端保持单列布局。
+论题、录音入口、只读回答文本和反馈位于同一页面。论题旁提供“换一题”；换题后清空当前练习状态。麦克风位于作答区中央，采用浅灰色圆面与中灰色图标；录音中使用深灰色实心状态。随练习状态逐步展示内容，每个状态只突出一个主操作。反馈优先呈现可执行建议和对应的回答片段，再呈现维度分数。移动端保持单列布局。
 
 Avoid unneccessary secondary labels and decsriptions. Let the layout do the axplaning
 
