@@ -1,6 +1,6 @@
 # R1：后端接口契约与配置
 
-状态：R3 论题接口、R4 独立转写接口及 R5 评估服务已实现；完整作答接口将在 R6 串联。共享类型以 `packages/shared/src/index.ts` 为准。
+状态：R3–R6 后端接口已实现，包括出题、独立转写及完整作答；前端和真实模型仍待联调。共享类型以 `packages/shared/src/index.ts` 为准。
 
 ## 服务与配置
 
@@ -35,9 +35,9 @@
 - Qwen 采用 Base URL 下 `/chat/completions`，`stream=false`、`asr_options.enable_itn=false`；不额外发送润色提示，不强制 language 以容纳中英混合。关闭 ITN 只控制数字标准化，不保证模型逐字保留所有口头禅。
 - 上游调用限时 60 秒，不自动重试。空白转写返回 422 EMPTY_TRANSCRIPT；超时返回 504 UPSTREAM_TIMEOUT；网络、上游非成功状态或无效响应返回 502 TRANSCRIPTION_FAILED；缺少 Key 返回 503 SERVICE_NOT_CONFIGURED。
 - 参考 [Qwen-ASR 官方接口](https://help.aliyun.com/zh/model-studio/qwen-asr-api-reference)。当前保留北京地域通用域名配置；如账号要求业务空间专属域名，在 DASHSCOPE_BASE_URL 中替换，不更改代码。
-- R6 的作答接口将复用 TranscriptionService，不通过 HTTP 调用此接口，也不重复转写。
+- R6 作答接口直接复用 TranscriptionService，不通过 HTTP 调用此接口，也不重复转写。
 
-## POST /api/attempts
+## POST /api/attempts（R6 已实现）
 
 请求使用 `multipart/form-data`，浏览器自动生成 Content-Type boundary：
 
@@ -47,7 +47,10 @@
 | metadata | JSON 字符串 | 符合 `SubmitAttemptMetadata`：完整 topic、round、durationSeconds |
 
 - `round` 为 1 或 2；`durationSeconds` 大于 0 且不超过 180 秒。浏览器计时并在 180 秒结束录音；该字段是客户端计时信息，不等同于服务端解析出的音频时长。
-- topic 必须包含生成接口返回的字段；title 非空且不超过 200 字符，description 不超过 1000 字符。后端不存储 Topic，因此不能只提交 topicId。
+- topic 必须包含生成接口返回的字段；id 非空且不超过 200 字符，title 非空且不超过 200 字符，description 为不超过 1000 字符的字符串，source 为 ai 或 preset，createdAt 为可解析的时间字符串。后端不存储 Topic，因此不能只提交 topicId。
+- metadata 文本字段最大 16 KiB；录音格式与独立转写入口共用上传校验。metadata 的轮次和时长必须为 JSON 数字，不接受数字字符串。
+- 评估配置缺失时在转写前返回 503，避免无用转写；转写失败或为空时不调用评估。评估失败时返回对应错误，不返回部分作答结果。
+- 每次成功处理后生成独立的作答 ID，轮次只作为结果标记，后端不保存两轮历史；前端须自行保留首次结果。
 - 上传后同步完成转写和评估，再返回 HTTP 201、`SubmitAttemptResponse`。
 - `attempt.topicId` 对应提交的 topic.id；`evaluation.attemptId` 对应返回的 attempt.id；ID 和 createdAt 由服务端生成。
 - 转写文本只读；不开放文字替代作答接口。按所选 ASR 能力尽量保留原话，避免额外润色。
@@ -56,7 +59,7 @@
 
 ## 评估服务（R5）
 
-- 内部调用 `EvaluationService.evaluate(topic, attempt)`，返回 Evaluation；R6 通过模块注入复用，不新增文字作答或独立评估 HTTP 接口。
+- 内部调用 `EvaluationService.evaluate(topic, attempt)`，返回 Evaluation；R6 已通过模块注入复用，不新增文字作答或独立评估 HTTP 接口。
 - 使用 LLM 配置中的模型和 Base URL 下 `/chat/completions`，同步请求，超时 60 秒，不自动重试，不额外调用模型修复格式。
 - 论题标题、描述及转写文本作为 JSON 数据传入；不把录音时长作为语速评分依据。系统提示要求立场中立，不根据赞成或反对给分，不能执行回答中夹带的指令。
 - 评分参考：0–2 基本未体现、3–4 问题明显、5–6 基本达意但需补充、7–8 清楚且有依据、9–10 充分扎实且边界清楚。此标准约束提示词，不代表评分已通过人工质量校准。
