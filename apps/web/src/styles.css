@@ -15,18 +15,19 @@
   --mic-surface: #eeeeec;
   --mic-border: #d4d4d0;
   --content-width: 800px;
+  --error: #b91c1c;
 }
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
 button { font: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 button:focus-visible, a:focus-visible { outline: 3px solid #707070; outline-offset: 3px; }
 
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
 .site-header, .site-footer { width: min(100% - 64px, 1200px); margin-inline: auto; display: flex; align-items: center; justify-content: space-between; }
 .site-header { min-height: 88px; }
 .site-name { color: var(--text); font-size: 23px; font-weight: 700; text-decoration: none; }
-.preview-note { color: var(--text-muted); font-size: 13px; }
 .main-content { width: min(100% - 64px, var(--content-width)); margin: 0 auto; flex: 1; }
 
 .topic-view { padding: 60px 0 44px; }
@@ -88,10 +89,38 @@ button:focus-visible, a:focus-visible { outline: 3px solid #707070; outline-offs
 .dimension-row .dimension-suggestion { color: var(--text-muted); }
 .site-footer { min-height: 90px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 13px; }
 
+.status-text { color: var(--text-muted); font-size: 15px; line-height: 1.7; }
+.error-notice { margin-bottom: 24px; padding: 16px 20px; border-left: 3px solid var(--error); background: var(--surface); color: var(--error); }
+.error-notice p { margin: 0; line-height: 1.7; }
+.error-notice .button { margin-top: 12px; }
+.button-secondary { background: transparent; border-color: var(--mic-border); color: var(--text); }
+.button-secondary:hover { background: var(--mic-surface); }
+.recording-review { width: min(100%, 440px); }
+.recording-review audio { display: block; width: 100%; margin: 4px 0 24px; }
+.recording-actions { display: flex; justify-content: center; gap: 16px; }
+.text-button { margin-top: 20px; padding: 12px; border: 0; background: transparent; color: var(--text-muted); text-decoration: underline; text-underline-offset: 4px; }
+.answer-heading .practice-focus { margin: 18px auto 0; max-width: 600px; color: var(--text); }
+.feedback-main-single { grid-template-columns: 1fr; }
+.feedback-next .button { margin-top: 24px; }
+.feedback-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 24px; margin-top: 32px; }
+.feedback-details h3 { font-size: 17px; margin: 0 0 12px; }
+.feedback-details ul { padding-left: 20px; margin: 0; line-height: 1.8; font-size: 15px; }
+.feedback-details li + li { margin-top: 8px; }
+.comparison-view { margin-bottom: 28px; }
+.comparison-view h2 { margin: 0 0 20px; font-size: 21px; }
+.comparison-view table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+.comparison-view th, .comparison-view td { padding: 14px 8px; border-bottom: 1px solid var(--border); text-align: right; }
+.comparison-view th:first-child { text-align: left; padding-left: 0; }
+.comparison-view thead th { font-size: 13px; color: var(--text-muted); font-weight: 400; }
+.comparison-view tbody th { font-weight: 500; }
+.round-selector { display: flex; gap: 16px; margin-bottom: 24px; }
+.round-selector button { min-height: 44px; padding: 8px 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted); }
+.round-selector button[aria-pressed="true"] { border-bottom-color: var(--text); color: var(--text); font-weight: 600; }
+.topic-title, .topic-description, .transcript-text, .feedback-view { overflow-wrap: anywhere; }
+
 @media (max-width: 700px) {
   .site-header, .site-footer, .main-content { width: min(100% - 36px, var(--content-width)); }
   .site-header { min-height: 72px; }
-  .preview-note { max-width: 145px; text-align: right; line-height: 1.4; }
   .topic-view { padding: 48px 0 38px; }
   .topic-view-compact { padding: 35px 0 32px; }
   .topic-topline { align-items: flex-start; }
@@ -115,3 +144,5 @@ button:focus-visible, a:focus-visible { outline: 3px solid #707070; outline-offs
   .button, .mic-control { transition: none; }
   .button:hover, .mic-control:hover { transform: none; }
 }
+
+button:disabled:hover { transform: none; }

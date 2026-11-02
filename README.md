@@ -1,15 +1,27 @@
 # 言序 · 表达能力锻炼
 
-单用户表达练习项目，使用 pnpm workspace + Turborepo 管理 React 前端与 NestJS 后端。
+单用户中文表达练习项目，使用 pnpm workspace + Turborepo 管理 React 前端与 NestJS 后端。
 
 ## 当前状态
 
-目前提供项目公共基础代码、NestJS 健康检查接口，以及单页练习静态预览。用户可以在三道预置论题之间切换；居中的麦克风用于演示页面状态。回答文字和反馈均为与当前论题对应的示例，前端真实录音与 AI 反馈尚未接入；后端已实现出题、转写与完整作答接口。
+R1–R7 已完成实现：获取论题、浏览器录音、回听与重录、自动转写和三维评估、同题两轮回答对比。页面使用后端返回的内容，不再展示静态示例。当前练习只保存在页面状态，刷新后清空，不保存音频或练习历史。
+
+构建和本地模拟模型的浏览器全流程验证已通过。录音成功路径使用 Chrome 原生 MediaRecorder 和虚拟麦克风生成有效 WebM，经真实 NestJS 接口处理；不代表真实人声的中文识别准确度、Qwen 音频解码和 sub2api 模型兼容性已验证。真实模型调用及反馈质量仍待授权后联调。
 
 ## 环境与启动
 
 - Node.js 20.19 或更新版本
 - pnpm 10.28
+
+后端配置模板位于 `apps/api/.env.example`，实际配置放在 `apps/api/.env`。已有文件时保留原 Key，按模板补充；真实密钥文件被 Git 忽略。
+
+| 配置 | 用途 |
+| --- | --- |
+| DASHSCOPE_API_KEY / DASHSCOPE_BASE_URL / ASR_MODEL | 北京地域 Qwen3-ASR-Flash 转写 |
+| LLM_API_KEY / LLM_BASE_URL / LLM_MODEL | sub2api 接入的 GPT-6 Luna 出题与评估 |
+| PORT / WEB_ORIGIN | 后端端口和允许的前端来源，默认 3000 与 http://localhost:5173 |
+
+后端从固定的 `apps/api/.env` 加载配置，不依赖启动目录；系统环境变量优先。端口和已填写的 URL 不合法时启动失败，缺少 AI 配置不影响健康检查。
 
 在项目根目录执行：
 
@@ -18,40 +30,39 @@ pnpm install
 pnpm dev
 ```
 
-前端访问 `http://localhost:5173`，健康检查访问 `http://localhost:3000/api/health`。
+前端访问 `http://localhost:5173`，健康检查访问 `http://localhost:3000/api/health`。Vite 默认将同源 `/api` 请求转发到 `http://127.0.0.1:3000`。
 
-构建命令：
+后端端口改变或前后端分开部署时，可参考 `apps/web/.env.example` 配置 `VITE_API_BASE_URL`，并将后端 `WEB_ORIGIN` 设置为实际前端来源。前端变量在构建时写入浏览器文件，禁止放入任何 API Key。生产环境默认需要将同域 `/api` 转发至 NestJS，或在构建时指定后端地址。
 
 ```bash
 pnpm build
 ```
 
-项目设计与后续顺序见 [design.md](design.md)，版本状态见 [version.md](version.md)。
+使用真实配置打开页面会自动发起一次出题请求；提交录音会调用转写与评估，可能产生费用。无可用 LLM 配置或出题失败时，出题接口会回退预置题库；作答所需配置缺失时返回错误。
 
-## 后端配置与接口
+## 使用流程
 
-R1 已确定接口契约与共享类型，详见 [docs/api-contract.md](docs/api-contract.md)。R3–R6 已实现论题、独立转写和完整作答接口，前端仍使用示例数据。
+1. 等待论题显示，点击话筒并允许麦克风权限。
+2. 作答后点击结束，或等待 3 分钟自动结束；可回听、重录，再提交回答。
+3. 等待转写和评估完成，阅读只读回答文本、原文引用、练习建议与三维评分。
+4. 点击“同题再答一次”，第二次提交后查看两轮分数变化并切换各自全文与反馈。
+5. 点击“换一题”后清空当前练习并获取新题；换题失败时保留原来的练习。
 
-后端配置模板位于 `apps/api/.env.example`，本地配置保存在 `apps/api/.env`。已有本地配置时保留原文件，按模板补充字段；不要覆盖已有 Key。真实密钥不提交到 Git。
+录音限 6 MiB，只通过麦克风作答，无文字输入替代入口。录音需要 localhost 或 HTTPS 以及支持 MediaRecorder 的浏览器；优先录制 WebM/Opus，支持时回退 MP4。已验证 Chrome，其他浏览器仍需实际设备确认。
 
-转写使用 Qwen3-ASR-Flash 北京地域；出题与评估使用 GPT-6 Luna，其 API Key 与服务地址仅在本地配置。R2 已完成环境文件读取与统一异常响应，R3 已实现 AI 出题及预置回退，R4 已实现录音上传和 Qwen 转写；R5 已实现评估服务与结果校验，R6 已串联完整作答。
+提交失败时录音留在当前页面，可回听、重录或重试；重试会重新执行模型调用。处理期间禁止重复提交和换题。两次上游调用各限时 60 秒，前端等待上限为 135 秒。
 
-后端会从 `apps/api/.env` 加载配置，不依赖启动目录；系统已有环境变量优先。默认监听 `127.0.0.1:3000`，可通过 `PORT` 修改端口，通过 `WEB_ORIGIN` 指定允许访问的前端来源。端口和已填写的 URL 配置不合法时启动失败；缺少 AI Key 不影响健康检查。未提供本地环境文件时仍可使用默认配置启动健康检查。
+## 后端接口
 
-获取论题：`GET http://localhost:3000/api/topics/random`；换题时可附加 `?excludeTopicId=当前题目ID`。响应为 `{ topic }`，`topic.source` 为 `ai` 或 `preset`。LLM 配置缺失、调用失败、15 秒超时或结果格式无效时，返回预置论题；真实 sub2api 服务兼容性尚待联调。注意：使用本地真实 LLM 配置访问该接口会发起模型调用，可能产生费用。
+完整契约见 [docs/api-contract.md](docs/api-contract.md)。
 
-独立转写接口（R4）：`POST http://localhost:3000/api/transcriptions`，使用 multipart 字段 `audio`（文件，最大 6 MiB）和 `durationSeconds`（录音秒数，0–180，不含 0），返回 `{ transcript }`。例如：
+| 接口 | 用途 |
+| --- | --- |
+| GET /api/health | 健康检查 |
+| GET /api/topics/random | 获取论题，可附带 excludeTopicId |
+| POST /api/transcriptions | 独立转写验收，multipart 字段 audio、durationSeconds |
+| POST /api/attempts | 完整作答，multipart 字段 audio、metadata |
 
-```bash
-curl http://localhost:3000/api/transcriptions \
-  -F 'audio=@/absolute/path/recording.webm;type=audio/webm' \
-  -F 'durationSeconds=30'
-```
+metadata 为 JSON 字符串，包含完整 `topic`、数字 `round`（1 或 2）及数字 `durationSeconds`（大于 0、不超过 180）。成功返回 HTTP 201、`{ attempt, evaluation }`；评估 ID 与作答 ID 由后端关联。主流程直接调用完整作答接口，不先调用独立转写接口。
 
-使用本地 Qwen 配置执行此请求会调用真实服务并可能计费；本阶段只完成模拟上游验证。真实浏览器音频兼容性及中文识别效果仍待 R7 联调。`/api/attempts` 已可同步返回转写与评估结果。
-
-R5 评估服务仅供后端内部调用，输出三维评分、反馈标题、原文引用及练习建议；引用不在原文、维度缺失或评分无效时返回评估失败，不使用示例分数替代。未开放文字作答或独立评估接口，已在 R6 与录音转写串联。
-
-完整作答接口（R6）：`POST http://localhost:3000/api/attempts`，使用 multipart 字段 `audio` 和 `metadata`。metadata 为 JSON 字符串，包含从出题接口取得的完整 `topic`、数字 `round`（1 或 2）和数字 `durationSeconds`（大于 0、不超过 180）。不要将独立转写接口返回的文字再次提交；作答接口内部只转写一次，再调用评估。
-
-成功返回 HTTP 201，响应为 `{ attempt, evaluation }`；`evaluation.attemptId` 对应 `attempt.id`。同题重答使用相同 topic 和 round=2，前端保留两次响应以供对比。转写或评估失败返回统一错误，不返回半成品结果；重试会重新执行模型调用。完整流程最多依次等待转写 60 秒和评估 60 秒，前端联调时需要匹配请求等待时间。
+项目设计与 R1–R8 阶段见 [design.md](design.md)，版本状态见 [version.md](version.md)。
