@@ -1,4 +1,4 @@
-# 言序 · 表达能力锻炼
+# 獭獭说 · 表达能力锻炼
 
 单用户中文表达练习项目，使用 pnpm workspace + Turborepo 管理 React 前端与 NestJS 后端。
 
