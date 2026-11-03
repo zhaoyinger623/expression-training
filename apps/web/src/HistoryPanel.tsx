@@ -1,3 +1,4 @@
+import styles from './styles.module.less';
 import { useEffect, useState } from 'react';
 import type { PracticeSummary } from '@expression/shared';
 import { getPracticeHistory } from './practiceStore';
@@ -33,19 +34,19 @@ export function HistoryPanel({ onOpen, openingId, detailError }: {
     return () => clearTimeout(timer);
   }, []);
 
-  return <section className="history-view" aria-labelledby="history-title">
-    <div className="section-title-row"><h1 id="history-title">练习历史</h1><span>保存在此浏览器</span></div>
-    {(error || detailError) && <div className="error-notice" role="alert"><p>{error || detailError}</p>
-      {error && <button className="text-button" type="button" disabled={loading || !!openingId} onClick={() => void load(items.length)}>重新读取记录</button>}
+  return <section className={styles['history-view']} aria-labelledby="history-title">
+    <div className={styles['section-title-row']}><h1 id="history-title">练习历史</h1><span>保存在此浏览器</span></div>
+    {(error || detailError) && <div className={styles['error-notice']} role="alert"><p>{error || detailError}</p>
+      {error && <button className={styles['text-button']} type="button" disabled={loading || !!openingId} onClick={() => void load(items.length)}>重新读取记录</button>}
     </div>}
-    {!loading && !error && items.length === 0 && <div className="history-empty"><h2>还没有练习记录</h2><p>完成一次回答后，论题、回答文本与反馈会自动保存在此浏览器。</p></div>}
-    <ul className="history-list">{items.map((item) => <li key={item.id}>
+    {!loading && !error && items.length === 0 && <div className={styles['history-empty']}><h2>还没有练习记录</h2><p>完成一次回答后，论题、回答文本与反馈会自动保存在此浏览器。</p></div>}
+    <ul className={styles['history-list']}>{items.map((item) => <li key={item.id}>
       <button type="button" disabled={!!openingId || loading} onClick={() => onOpen(item.id)}>
         <strong>{item.topicTitle}</strong>
         <span><time dateTime={item.updatedAt}>{dateFormat.format(new Date(item.updatedAt))}</time> · {item.attemptCount} 次回答{openingId === item.id ? ' · 正在打开…' : ''}</span>
       </button>
     </li>)}</ul>
-    {loading && <p className="status-text" role="status">正在读取练习记录…</p>}
-    {!loading && items.length < total && !error && <button className="button button-secondary" type="button" disabled={!!openingId} onClick={() => void load(items.length)}>加载更多</button>}
+    {loading && <p className={styles['status-text']} role="status">正在读取练习记录…</p>}
+    {!loading && items.length < total && !error && <button className={`${styles['button']} ${styles['button-secondary']}`} type="button" disabled={!!openingId} onClick={() => void load(items.length)}>加载更多</button>}
   </section>;
 }
