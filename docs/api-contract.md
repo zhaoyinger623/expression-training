@@ -127,3 +127,15 @@ R4–R8 已验证 multipart 传输、声明格式和大小限制、Chrome 原生
 ## Vercel 运行配置
 
 `apps/api/vercel.json` 仅声明 NestJS 框架，不以源文件路径配置 functions；函数时限在 Vercel 控制台设置至少 180 秒（Fluid Compute 默认 300 秒也足够）；浏览器单次 SSE 等待上限 120 秒，ASR 与评估上游分别限时 90 秒。生产环境 WEB_ORIGIN 填实际前端来源（不含路径），经 URL.origin 规范化后用于精确 CORS 匹配。VITE_API_BASE_URL 填后端来源，不含 /api；它是构建时变量，修改后须重新构建前端。详见 [部署指南](deployment-vercel.md)。
+
+## v0.6：第二轮原话对比（流式评估）
+
+`POST /api/evaluations/stream` 的 JSON 请求在原字段外增加可选字段：
+
+```ts
+firstAnswer?: { transcript: string; nextStep: string }
+```
+
+仅 round=2 可提供，首次转写须非空且不超过 30,000 字符，建议须非空且不超过 4,000 字符。不提供时保持原评估行为。首次内容仅作对比，第二轮仍按统一标准独立评分。
+
+SSE complete 的 `result` 增加可选 `comparison: AnswerComparison`（定义见 `packages/shared/src/index.ts`），与 `attempt`、`evaluation` 平级。变化支持 improved、unchanged、regressed，最多两项；引用须逐字存在于对应轮次转写中。缺失或不合格对比不影响正常评估，首轮不返回对比。同步兼容接口不新增对比功能。

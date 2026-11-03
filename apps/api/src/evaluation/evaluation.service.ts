@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import type { Attempt, Evaluation, Topic } from '@expression/shared';
+import type { AnswerComparison, Attempt, EvaluateAttemptRequest, Evaluation, Topic } from '@expression/shared';
 import { ApiConfig } from '../config.js';
 import { ApiException } from '../common/api-exception.js';
-import { parseEvaluation } from './evaluation-result.js';
+import { parseComparison, parseEvaluation } from './evaluation-result.js';
 
 @Injectable()
 export class EvaluationService {
   constructor(private readonly config: ApiConfig) {}
 
-  async evaluate(topic: Topic, attempt: Attempt, onDelta?: (text: string) => void): Promise<Evaluation> {
+  async evaluate(topic: Topic, attempt: Attempt, onDelta?: (text: string) => void, firstAnswer?: EvaluateAttemptRequest['firstAnswer']): Promise<Evaluation & { comparison?: AnswerComparison }> {
     const { apiKey, baseUrl, model } = this.config.llm;
     if (!apiKey || !baseUrl) {
       throw new ApiException(503, 'SERVICE_NOT_CONFIGURED', '回答评估服务尚未配置');
@@ -22,7 +22,7 @@ export class EvaluationService {
         body: JSON.stringify({
           model,
           stream: true,
-          max_tokens: 3600,
+          max_tokens: firstAnswer ? 4600 : 3600,
           messages: [
             {
               role: 'system',
@@ -37,11 +37,13 @@ export class EvaluationService {
 overallScore 为六项评分均值四舍五入到整数；思维导图每个数组最多 8 项、最多 4 层，每个节点包含 label 和 children。userMindMap 只归纳用户实际表达及暴露的问题，不臆造；referenceMindMap 和 referenceAnswer 要正面回答论题。
 referenceAnswer 至少包含500个汉字，不能用重复句或空话凑字数。按“立场—分论点—理由与具体例子—反方/限制条件—结论”组织，使用“一、二、三”及其下的分点换行，前后推理连贯、观点有依据。用 ==核心论点或值得记忆的表达== 标出少量金句；只允许此标记语法，不输出Markdown标题符号或代码围栏。
 evidenceQuotes 尽量提供 1–3 条优点和 1–3 条待改进原句；每条 text 必须是回答中的连续原文，feedback 要具体点评该句，不得编造引用。确实没有可引用内容时对应类别可以为空。
-featuredQuote找不到合适引用时必须为null，禁止改写原话当作引用；strengths和issues可为空列表，有内容时各保持1–3条。不要输出attemptId，它由系统关联。`,
+featuredQuote找不到合适引用时必须为null，禁止改写原话当作引用；strengths和issues可为空列表，有内容时各保持1–3条。不要输出attemptId，它由系统关联。
+${firstAnswer ? `这是第二轮回答。先独立按上述统一标准评估当前transcript，禁止因相比首次有进步而抬高分数；firstAnswer仅用于对比。完成评估字段后，额外输出comparison：{"summary":"一句话概括最主要变化","changes":[{"dimension":"六维之一","status":"improved或unchanged或regressed","firstQuote":"首次连续原文","secondQuote":"第二次连续原文","explanation":"解释具体变化及其影响"}],"remainingIssue":"一个仍需改进的问题","nextAction":"下次开口可执行的一个动作"}。changes选择1–2项最重要且有两轮原文证据的变化，不凑数、不强行表扬，允许未改善或退步；不得把篇幅增加、分数上涨当作进步依据。两段引用必须分别逐字来自firstAnswer.transcript和transcript，缺失内容在explanation中说明，禁止伪造引用。无法可靠比较时comparison为null。` : '这是独立首轮评估，不输出comparison。'}`,
             },
             { role: 'user', content: JSON.stringify({
               topic: { title: topic.title, description: topic.description },
               transcript: attempt.transcript,
+              ...(firstAnswer ? { firstAnswer } : {}),
             }) },
           ],
         }),
@@ -88,7 +90,9 @@ featuredQuote找不到合适引用时必须为null，禁止改写原话当作引
       } catch {
         throw new ApiException(502, 'EVALUATION_FAILED', '评估结果缺少必要内容，请重新提交回答');
       }
-      return { ...result, attemptId: attempt.id };
+      const comparison = firstAnswer && typeof parsed === 'object' && parsed !== null
+        ? parseComparison((parsed as Record<string, unknown>).comparison, firstAnswer.transcript, attempt.transcript) : undefined;
+      return { ...result, attemptId: attempt.id, ...(comparison ? { comparison } : {}) };
     } catch (error) {
       if (error instanceof ApiException) throw error;
       if (error instanceof Error && error.name === 'TimeoutError') {

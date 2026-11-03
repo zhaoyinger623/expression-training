@@ -30,6 +30,19 @@ export interface Evaluation {
   nextStep: string;
 }
 
+export interface AnswerComparison {
+  summary: string;
+  changes: {
+    dimension: DimensionFeedback['name'];
+    status: 'improved' | 'unchanged' | 'regressed';
+    firstQuote: string;
+    secondQuote: string;
+    explanation: string;
+  }[];
+  remainingIssue: string;
+  nextAction: string;
+}
+
 export interface MindMapNode {
   label: string;
   children: MindMapNode[];
@@ -73,17 +86,20 @@ export interface SubmitAttemptMetadata {
 
 export interface EvaluateAttemptRequest extends SubmitAttemptMetadata {
   transcript: string;
+  firstAnswer?: { transcript: string; nextStep: string };
 }
 
 export interface SubmitAttemptResponse {
   attempt: Attempt;
   evaluation: Evaluation;
+  comparison?: AnswerComparison;
 }
 
 export interface Practice {
   id: string;
   topic: Topic;
   results: SubmitAttemptResponse[];
+  comparison?: AnswerComparison;
   createdAt: string;
   updatedAt: string;
 }

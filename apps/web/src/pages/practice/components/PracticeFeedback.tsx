@@ -11,7 +11,7 @@ function renderHighlightedLine(line: string) {
 }
 
 export function PracticeFeedback() {
-  const { topic, results, selected, setSelected, result, busy, pendingSave, answerAgain, loadTopic } = usePracticeStore();
+  const { comparison, topic, results, selected, setSelected, result, busy, pendingSave, answerAgain, loadTopic } = usePracticeStore();
   const feedbackTitle = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -23,6 +23,20 @@ export function PracticeFeedback() {
   return (
     <div className={styles['result-view']}>
       {results.length === 2 && <>
+        {comparison && <section className={styles['answer-comparison']} aria-labelledby="answer-comparison-title">
+          <h2 id="answer-comparison-title" tabIndex={-1} ref={selected === 1 ? feedbackTitle : undefined}>这次重答，有哪些变化</h2>
+          <p className={styles['comparison-summary']}>{comparison.summary}</p>
+          {comparison.changes.map((change, index) => <article className={styles['comparison-change']} key={index}>
+            <h3>{change.status === 'improved' ? '有进步' : change.status === 'regressed' ? '有所退步' : '仍未解决'} · {change.dimension}</h3>
+            <div className={styles['comparison-quotes']}>
+              <div><span>首次回答</span><blockquote>“{change.firstQuote}”</blockquote></div>
+              <div><span>第二次回答</span><blockquote>“{change.secondQuote}”</blockquote></div>
+            </div>
+            <p>{change.explanation}</p>
+          </article>)}
+          <div className={styles['comparison-action']}><h3>仍可改进</h3><p>{comparison.remainingIssue}</p><h3>下一次只练这一点</h3><p>{comparison.nextAction}</p></div>
+        </section>}
+
         <section className={styles['comparison-view']} aria-labelledby="comparison-title">
           <h2 id="comparison-title">两次作答对比</h2>
           <table>
@@ -41,7 +55,7 @@ export function PracticeFeedback() {
         <p className={styles['transcript-text']}>{result.attempt.transcript}</p>
       </section>
       <section className={styles['feedback-view']} aria-labelledby="feedback-title">
-        <div className={styles['feedback-heading']}><h2 id="feedback-title" tabIndex={-1} ref={feedbackTitle}>{result.evaluation.summary}</h2></div>
+        <div className={styles['feedback-heading']}><h2 id="feedback-title" tabIndex={-1} ref={comparison && selected === 1 ? undefined : feedbackTitle}>{result.evaluation.summary}</h2></div>
         <div className={styles['feedback-companion']}><img src="/companion-still.png" alt="" width="64" height="64" /><p>一起看看，哪些地方可以更清楚。</p></div>
         <section className={styles['evidence-feedback']} aria-labelledby="evidence-title">
           <h3 id="evidence-title">从你的原话来看</h3>

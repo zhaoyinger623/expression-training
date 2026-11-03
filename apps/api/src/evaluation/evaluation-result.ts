@@ -1,4 +1,4 @@
-import type { DimensionFeedback, Evaluation, MindMapNode } from '@expression/shared';
+import type { AnswerComparison, DimensionFeedback, Evaluation, MindMapNode } from '@expression/shared';
 
 const dimensionNames = ['观点与论证', '结构与连贯', '表达清晰度', '论题回应度', '具体性与例证', '权衡与边界'];
 
@@ -71,4 +71,22 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
     issues: value.issues,
     nextStep: value.nextStep,
   };
+}
+
+/** 对比不合格时仅省略对比，不影响本轮评估。 */
+export function parseComparison(value: unknown, firstTranscript: string, secondTranscript: string): AnswerComparison | undefined {
+  if (!isRecord(value) || !isText(value.summary) || !isText(value.remainingIssue) || !isText(value.nextAction) ||
+    !Array.isArray(value.changes) || value.changes.length > 2) return undefined;
+  const changes: AnswerComparison['changes'] = [];
+  for (const item of value.changes) {
+    if (!isRecord(item) || !dimensionNames.includes(item.dimension as string) ||
+      !['improved', 'unchanged', 'regressed'].includes(item.status as string) ||
+      !isText(item.firstQuote) || !firstTranscript.includes(item.firstQuote) ||
+      !isText(item.secondQuote) || !secondTranscript.includes(item.secondQuote) || !isText(item.explanation)) continue;
+    changes.push({ dimension: item.dimension as DimensionFeedback['name'], status: item.status as AnswerComparison['changes'][number]['status'],
+      firstQuote: item.firstQuote, secondQuote: item.secondQuote, explanation: item.explanation });
+  }
+  // 没有任何可靠原话依据时，不展示模型的整体对比判断。
+  if (!changes.length) return undefined;
+  return { summary: value.summary, changes, remainingIssue: value.remainingIssue, nextAction: value.nextAction };
 }

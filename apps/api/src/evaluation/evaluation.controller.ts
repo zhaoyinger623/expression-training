@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Body, Controller, Post, Res } from '@nestjs/common';
-import type { Attempt, Topic } from '@expression/shared';
+import type { Attempt, EvaluateAttemptRequest, Topic } from '@expression/shared';
 import { ApiException } from '../common/api-exception.js';
 import { ApiConfig } from '../config.js';
 import { EvaluationService } from './evaluation.service.js';
@@ -39,14 +39,23 @@ export class EvaluationController {
         typeof topic.createdAt !== 'string' || !Number.isFinite(Date.parse(topic.createdAt))) {
         throw new ApiException(400, 'INVALID_REQUEST', '论题、轮次、录音时长或转写文本格式不正确');
       }
+      let firstAnswer: EvaluateAttemptRequest['firstAnswer'];
+      if (body.firstAnswer !== undefined) {
+        const first = body.firstAnswer;
+        if (round !== 2 || !isRecord(first) || typeof first.transcript !== 'string' || !first.transcript.trim() || first.transcript.length > 30_000 ||
+          typeof first.nextStep !== 'string' || !first.nextStep.trim() || first.nextStep.length > 4000) {
+          throw new ApiException(400, 'INVALID_REQUEST', '首次回答或练习建议格式不正确');
+        }
+        firstAnswer = { transcript: first.transcript, nextStep: first.nextStep };
+      }
       if (!this.config.llm.apiKey || !this.config.llm.baseUrl) throw new ApiException(503, 'SERVICE_NOT_CONFIGURED', '回答评估服务尚未配置');
       const validatedTopic = topic as unknown as Topic;
       const attempt: Attempt = {
         id: randomUUID(), topicId: validatedTopic.id, round, transcript: transcript.trim(), durationSeconds,
         createdAt: new Date().toISOString(),
       };
-      const result = await this.evaluation.evaluate(validatedTopic, attempt, (text) => send({ type: 'delta', text }));
-      send({ type: 'complete', result: { attempt, evaluation: result } });
+      const { comparison, ...evaluation } = await this.evaluation.evaluate(validatedTopic, attempt, (text) => send({ type: 'delta', text }), firstAnswer);
+      send({ type: 'complete', result: { attempt, evaluation, ...(comparison ? { comparison } : {}) } });
     } catch (error) {
       const responseBody = error instanceof ApiException ? error.getResponse() : { code: 'INTERNAL_ERROR', message: '评估失败，请重试' };
       send({ type: 'error', error: responseBody });

@@ -155,3 +155,32 @@
 }
 
 .mindmap-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; width: 100%; margin: 0 0 40px; }
+
+.answer-comparison {
+  margin-bottom: 32px;
+  padding: 28px;
+  background: var(--surface);
+  border-radius: 16px;
+  h2 { margin: 0; }
+  h3 { font-size: 16px; margin: 0 0 12px; }
+  p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+}
+.comparison-summary { margin-top: 12px !important; }
+.comparison-change { margin-top: 28px; }
+.comparison-quotes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+  > div { padding: 16px; background: var(--mic-surface); border-radius: 10px; }
+  span { color: var(--text-muted); font-size: 14px; }
+  blockquote { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+}
+.comparison-action {
+  margin-top: 28px;
+  h3:not(:first-child) { margin-top: 20px; }
+}
+@media (max-width: 600px) {
+  .answer-comparison { padding: 20px; }
+  .comparison-quotes { grid-template-columns: minmax(0, 1fr); }
+}

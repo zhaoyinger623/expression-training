@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Practice, SubmitAttemptResponse, Topic } from '@expression/shared';
+import type { AnswerComparison, Practice, SubmitAttemptResponse, Topic } from '@expression/shared';
 import { evaluateAttempt, getTopic, transcribeAudio } from '../api/practice';
 import { getPractice, savePractice } from '../storage/practiceStorage';
 import { useRecorder } from '../hooks/useRecorder';
@@ -23,6 +23,7 @@ function usePracticeState() {
   const [evaluationCharacters, setEvaluationCharacters] = useState(0);
   const [error, setError] = useState('');
   const [results, setResults] = useState<SubmitAttemptResponse[]>([]);
+  const [comparison, setComparison] = useState<AnswerComparison>();
   const [selected, setSelected] = useState(0);
   const [showAnswer, setShowAnswer] = useState(true);
   const [audioUrl, setAudioUrl] = useState('');
@@ -45,6 +46,7 @@ function usePracticeState() {
       const response = await getTopic(topic?.id);
       setTopic(response.topic);
       setResults([]);
+      setComparison(undefined);
       setSelected(0);
       setShowAnswer(true);
       setPracticeId(crypto.randomUUID());
@@ -81,16 +83,19 @@ function usePracticeState() {
       const transcript = await transcribeAudio(recorder.audio, durationSeconds, setStreamTranscript);
       const response = await evaluateAttempt({
         topic, round: results.length === 0 ? 1 : 2, durationSeconds, transcript,
+        ...(results[0] ? { firstAnswer: { transcript: results[0].attempt.transcript, nextStep: results[0].evaluation.nextStep } } : {}),
       }, setEvaluationCharacters);
-      const nextResults = [...results, response];
+      const { comparison: nextComparison, ...answer } = response;
+      const nextResults = [...results, answer];
       setResults(nextResults);
+      setComparison(nextComparison);
       setSelected(results.length);
       setShowAnswer(false);
       recorder.reset();
       const now = new Date().toISOString();
       const started = createdAt || now;
       setCreatedAt(started);
-      await persist({ id: practiceId, topic, results: nextResults, createdAt: started, updatedAt: now });
+      await persist({ id: practiceId, topic, results: nextResults, ...(nextComparison ? { comparison: nextComparison } : {}), createdAt: started, updatedAt: now });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '提交失败，请重试。');
     } finally {
@@ -127,6 +132,7 @@ function usePracticeState() {
       setCreatedAt(practice.createdAt);
       setTopic(practice.topic);
       setResults(practice.results);
+      setComparison(practice.comparison);
       setSelected(practice.results.length - 1);
       setShowAnswer(false);
       recorder.reset();
@@ -139,5 +145,5 @@ function usePracticeState() {
     }
   }
 
-  return { topic, loadingTopic, submitting, streamTranscript, evaluationCharacters, error, setError, results, selected, setSelected, showAnswer, setShowAnswer, audioUrl, openingId, pendingSave, setPendingSave, saveError, setSaveError, saving, recorder, recording, requesting, busy, result, loadTopic, submit, persist, answerAgain, openPractice };
+  return { comparison, topic, loadingTopic, submitting, streamTranscript, evaluationCharacters, error, setError, results, selected, setSelected, showAnswer, setShowAnswer, audioUrl, openingId, pendingSave, setPendingSave, saveError, setSaveError, saving, recorder, recording, requesting, busy, result, loadTopic, submit, persist, answerAgain, openPractice };
 }
