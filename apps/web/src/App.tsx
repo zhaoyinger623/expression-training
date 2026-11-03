@@ -210,6 +210,7 @@ function App() {
           <div className="answer-center">
             {(recording || recorder.phase === 'recorded') && <div className="recording-time" aria-label={`录音时长 ${time}`}>{time}</div>}
             {(recorder.phase === 'idle' || requesting || recording) && <>
+              {recording && <img className="recording-companion" src="/recording-companion.gif" alt="" aria-hidden="true" />}
               <button className={`mic-control ${recording ? 'is-recording' : ''}`} type="button"
                 disabled={loadingTopic || submitting || requesting} aria-label={recording ? '结束录音' : '开始录音'} aria-describedby="recording-hint"
                 onClick={() => { setError(''); if (recording) recorder.stop(); else void recorder.start(); }}>
