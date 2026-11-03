@@ -21,8 +21,8 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
   const parseMindMap = (items: unknown[], depth = 0): MindMapNode[] => {
     if (depth > 3 || items.length > 8) throw new Error('思维导图层级或节点过多');
     return items.map((item) => {
-      if (!isRecord(item) || !isText(item.label) || !Array.isArray(item.children)) throw new Error('思维导图节点无效');
-      return { label: item.label, children: parseMindMap(item.children, depth + 1) };
+      if (!isRecord(item) || !isText(item.label) || (item.children !== undefined && !Array.isArray(item.children))) throw new Error('思维导图节点无效');
+      return { label: item.label, children: parseMindMap((item.children ?? []) as unknown[], depth + 1) };
     });
   };
   if (!Array.isArray(value.dimensions) || value.dimensions.length !== dimensionNames.length) {

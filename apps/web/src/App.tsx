@@ -219,12 +219,14 @@ function App() {
               <p className="mic-caption" role="status">{requesting ? '请允许浏览器使用麦克风…' : recording ? '正在录音，点击方块结束' : '点击话筒，开始回答'}</p>
             </>}
             {recorder.phase === 'recorded' && <div className="recording-review">
-              <audio controls src={audioUrl} aria-label="回听本次录音" />
-              <div className="recording-actions">
-                <button className="button button-secondary" type="button" disabled={submitting} onClick={() => { setError(''); recorder.reset(); }}>重新录音</button>
-                <button className="button button-primary" type="button" disabled={submitting || loadingTopic} onClick={() => void submit()}>
-                  {submitting ? '处理中…' : error ? '重试提交' : '提交回答'}
-                </button>
+              <div className="recording-review-controls">
+                <audio controls src={audioUrl} aria-label="回听本次录音" />
+                <div className="recording-actions">
+                  <button className="button button-secondary" type="button" disabled={submitting} onClick={() => { setError(''); recorder.reset(); }}>重新录音</button>
+                  <button className="button button-primary" type="button" disabled={submitting || loadingTopic} onClick={() => void submit()}>
+                    {submitting ? '处理中…' : error ? '重试提交' : '提交回答'}
+                  </button>
+                </div>
               </div>
               {submitting && <div className="stream-progress" role="status"><p>{streamTranscript ? (evaluationCharacters ? `AI 正在流式生成评估…（已接收 ${evaluationCharacters} 字）` : '转写完成，正在启动 AI 评估…') : '正在流式转写录音…'}</p>{streamTranscript && <p className="stream-transcript">{streamTranscript}</p>}</div>}
             </div>}
