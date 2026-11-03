@@ -69,15 +69,15 @@ apps/web/src/
 - 前后端共享契约继续放在 `packages/shared`；`types` 仅收纳前端共享类型，局部类型就近定义。`utils` 只接收确有复用的纯函数，单次使用逻辑保持内联。
 - 组件使用 PascalCase，Hook 使用 `useXxx`，普通模块使用 camelCase。组件及页面样式使用 Less Modules 并就近放置，`styles` 只保留全局基础样式与设计变量。
 
-### 现有文件迁移对应
+### 已完成的目录拆分
 
-以下为后续整理代码时的落点，本节不表示迁移已经完成。迁移时同步修改导入并运行前端构建，保持现有练习流程和历史恢复行为。
+现有代码已按下表拆分。`stores/practiceStore.tsx` 使用 React Context 共享练习状态，页面切换时保留待提交录音与反馈；IndexedDB 仍独立放在 `storage`。后续调整目录时同步修改导入并运行前端构建。`types`、`utils` 尚无实际共享内容，暂不创建。
 
-| 当前文件 | 目标位置 / 处理方式 |
+| 原文件 | 当前分布 |
 | --- | --- |
-| `App.tsx` | 练习业务移入 `pages/practice/index.tsx`，应用壳保留在 `App.tsx`，页面选择交由 `router/index.tsx` 管理 |
+| `App.tsx` | `App.tsx` 组装 Provider 和路由；布局放在 `components/AppLayout.tsx`，练习视图放在 `pages/practice/index.tsx`，共享状态与操作放在 `stores/practiceStore.tsx`，页面选择交由 `router/index.tsx` 管理 |
 | `HistoryPanel.tsx` | 历史视图移入 `pages/history/index.tsx`，打开练习的回调与导航由上层组装 |
 | `api.ts` | 请求与 SSE 基础逻辑放入 `api/client.ts`，业务接口放入 `api/practice.ts` |
-| `practiceStore.ts` | 现有 IndexedDB 逻辑移入 `storage/practiceStorage.ts`；未来需要共享内存状态时再创建 `stores` 模块 |
+| `practiceStore.ts` | 原 IndexedDB 逻辑移入 `storage/practiceStorage.ts`；练习共享内存状态由独立的 `stores/practiceStore.tsx` 管理 |
 | `useRecorder.ts` | 移入 `hooks/useRecorder.ts` |
-| `styles.module.less` | 按归属拆入页面或组件旁，全局基础样式与变量移入 `styles` |
+| `styles.module.less` | 页面与组件使用各自的 Less Module，通用控件样式放在 `components/common.module.less`，全局基础样式与变量放在 `styles/global.less` |

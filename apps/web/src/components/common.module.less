@@ -1,0 +1,22 @@
+.button { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 28px; padding: 0 20px; border-radius: 10px; border: 1px solid transparent; font-weight: 600; font-size: 15px; transition: background .18s ease, transform .18s ease; }
+.button:hover { transform: translateY(-1px); }
+.button-primary { color: white; background: var(--brand); }
+.button-primary:hover { background: var(--brand-hover); }
+.section-title-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.section-title-row h2 { margin: 0; font-size: 21px; font-weight: 600; }
+.section-title-row span { color: var(--text-muted); font-size: 13px; }
+.status-text { color: var(--text-muted); font-size: 15px; line-height: 1.7; }
+.error-notice { margin-bottom: 24px; padding: 16px 20px; border-left: 3px solid var(--error); background: var(--surface); color: var(--error); }
+.error-notice p { margin: 0; line-height: 1.7; }
+.error-notice .button { margin-top: 12px; }
+.button-secondary { background: transparent; border-color: var(--mic-border); color: var(--text); }
+.button-secondary:hover { background: var(--mic-surface); }
+.text-button { margin-top: 20px; padding: 12px; border: 0; background: transparent; color: var(--text-muted); text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 700px) {
+  .section-title-row { align-items: flex-start; }
+  .section-title-row span { padding-top: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button { transition: none; }
+  .button:hover { transform: none; }
+}

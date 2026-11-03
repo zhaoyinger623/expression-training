@@ -1,0 +1,14 @@
+.app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.site-header, .site-footer { width: min(100% - 64px, 1200px); margin-inline: auto; display: flex; align-items: center; justify-content: space-between; }
+.site-header { min-height: 88px; }
+.site-name { color: var(--text); font-size: 23px; font-weight: 700; text-decoration: none; }
+.main-content { width: min(100% - 64px, var(--content-width)); margin: 0 auto; flex: 1; }
+.site-footer { min-height: 90px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 13px; }
+@media (max-width: 700px) {
+  .site-header, .site-footer, .main-content { width: min(100% - 36px, var(--content-width)); }
+  .site-header { min-height: 72px; }
+  .site-footer { gap: 12px; line-height: 1.4; }
+}
+.header-actions { display: flex; gap: 24px; }
+.header-actions button { min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: var(--text-muted); }
+.header-actions button[aria-pressed="true"] { color: var(--text); font-weight: 600; }

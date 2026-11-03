@@ -60,3 +60,11 @@
 - 部署反馈修复：删除 apps/api/vercel.json 中无法匹配的 functions.src/main.ts 配置，改用项目默认时限；配置 JSON 与 Git 差异检查通过，云端重新部署结果待确认。
 
 - TS2688 修复：使用临时目录配置 extends 后端 tsconfig 的编译方式，在修改前复现缺少 node 类型的错误；明确 typeRoots 后同一编译退出码为 0，pnpm build 通过。未运行自动化测试或追加真实 API 调用；云端构建结果待确认。
+
+## 2026-11-03：前端目录分层
+
+- 前端按 `router`、`pages`、`components`、`hooks`、`stores`、`api`、`storage`、`styles` 拆分；使用现有 React Context 共享练习状态，未增加依赖。
+- `pnpm --filter @expression/web build`：类型检查和生产构建通过。构建提示 PostCSS 插件未传入 `from` 的非阻断警告。
+- 静态核对：CSS Modules 静态类名引用全部存在；Git 差异检查通过。
+- 本机浏览器使用临时模拟服务验证：练习与历史切换、返回后论题及待提交录音状态保留、主动换题、模拟录音期间导航锁定、SSE 转写评估、首次反馈、刷新后从 IndexedDB 打开历史、继续第二轮作答及六维对比、思维导图展开均通过。
+- 录音使用测试替身，音频回听控件有显示，但未验证实际音频播放；未访问麦克风，未调用真实 AI，未重新执行全套异常、移动端或跨浏览器验收。临时模拟服务与数据不纳入项目代码。

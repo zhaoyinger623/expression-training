@@ -1,0 +1,13 @@
+.error-notice { composes: error-notice from '../../components/common.module.less'; }
+.history-view { padding: 54px 0 70px; }
+.history-view h1 { margin: 0; font-size: 28px; line-height: 1.4; }
+.history-view .error-notice { margin-top: 24px; }
+.history-list { list-style: none; margin: 28px 0; padding: 0; }
+.history-list li { border-bottom: 1px solid var(--border); }
+.history-list button { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; width: 100%; padding: 24px 0; border: 0; background: transparent; text-align: left; color: var(--text); }
+.history-list button:hover:not(:disabled) strong { text-decoration: underline; text-underline-offset: 5px; }
+.history-list strong { font-size: 18px; font-weight: 500; line-height: 1.6; overflow-wrap: anywhere; }
+.history-list span { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+.history-empty { padding: 56px 0; }
+.history-empty h2 { margin: 0 0 16px; font-size: 20px; }
+.history-empty p { margin: 0; color: var(--text-muted); line-height: 1.8; }
