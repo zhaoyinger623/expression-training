@@ -1,4 +1,4 @@
-import type { AttemptStreamEvent, SubmitAttemptMetadata, SubmitAttemptResponse, TopicResponse } from '@expression/shared';
+import type { EvaluateAttemptRequest, EvaluationStreamEvent, SubmitAttemptResponse, TopicResponse, TranscriptionStreamEvent } from '@expression/shared';
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
@@ -27,18 +27,35 @@ export function getTopic(excludeTopicId?: string): Promise<TopicResponse> {
   return request(`/api/topics/random${query}`, {}, 25_000);
 }
 
-export function submitAttempt(audio: Blob, metadata: SubmitAttemptMetadata, onTranscript: (text: string) => void): Promise<SubmitAttemptResponse> {
+export function transcribeAudio(audio: Blob, durationSeconds: number, onTranscript: (text: string) => void): Promise<string> {
   const form = new FormData();
   const extension = audio.type.includes('mp4') ? 'm4a' : 'webm';
   form.append('audio', audio, `recording.${extension}`);
-  form.append('metadata', JSON.stringify(metadata));
-  return streamAttempt(form, onTranscript);
+  form.append('durationSeconds', String(durationSeconds));
+  return readStream<TranscriptionStreamEvent, string>(`${baseUrl}/api/transcriptions/stream`, form, (event, state) => {
+    if (event.type === 'delta') {
+      state.transcript += event.text;
+      onTranscript(state.transcript);
+    }
+    if (event.type === 'complete') state.result = event.transcript;
+  }, { transcript: '', result: '', characters: 0 }, '转写未返回完整文本，请重试。');
 }
 
-async function streamAttempt(form: FormData, onTranscript: (text: string) => void): Promise<SubmitAttemptResponse> {
+export function evaluateAttempt(input: EvaluateAttemptRequest, onProgress: (characters: number) => void): Promise<SubmitAttemptResponse> {
+  return readStream<EvaluationStreamEvent, SubmitAttemptResponse>(`${baseUrl}/api/evaluations/stream`, JSON.stringify(input), (event, state) => {
+    if (event.type === 'delta') {
+      state.characters += event.text.length;
+      onProgress(state.characters);
+    }
+    if (event.type === 'complete') state.result = event.result;
+  }, { transcript: '', characters: 0, result: null }, '服务未返回完整评估结果，请重试。');
+}
+
+async function readStream<Event extends TranscriptionStreamEvent | EvaluationStreamEvent, Result>(url: string, body: BodyInit, receive: (event: Event, state: { transcript: string; result: Result | null; characters: number }) => void, state: { transcript: string; result: Result | null; characters: number }, incompleteMessage: string): Promise<Result> {
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}/api/attempts/stream`, { method: 'POST', body: form, signal: AbortSignal.timeout(240_000) });
+    const isForm = body instanceof FormData;
+    response = await fetch(url, { method: 'POST', body, headers: isForm ? undefined : { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(120_000) });
   } catch {
     throw new Error('暂时无法连接服务，请检查网络或后端是否启动。');
   }
@@ -46,7 +63,6 @@ async function streamAttempt(form: FormData, onTranscript: (text: string) => voi
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  let result: SubmitAttemptResponse | null = null;
   let streamError = '';
   while (true) {
     const { value, done } = await reader.read();
@@ -56,14 +72,13 @@ async function streamAttempt(form: FormData, onTranscript: (text: string) => voi
     for (const chunk of chunks) {
       const line = chunk.split('\n').find((part) => part.startsWith('data: '));
       if (!line) continue;
-      const event = JSON.parse(line.slice(6)) as AttemptStreamEvent;
+      const event = JSON.parse(line.slice(6)) as Event;
       if (event.type === 'error') streamError = event.error.message;
-      if (event.type === 'transcript') onTranscript(event.transcript);
-      if (event.type === 'complete') result = event.result;
+      receive(event, state);
     }
     if (done) break;
   }
   if (streamError) throw new Error(streamError);
-  if (!result) throw new Error('服务未返回完整评估结果，请重试。');
-  return result;
+  if (!state.result) throw new Error(incompleteMessage);
+  return state.result;
 }

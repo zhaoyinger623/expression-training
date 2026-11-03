@@ -4,7 +4,7 @@
 
 ## 服务与配置
 
-- 转写：阿里云北京地域 `qwen3-asr-flash`，同步调用，使用 `DASHSCOPE_API_KEY`。R8 已通过一次真实 WAV 转写，免费额度或费用以控制台为准。
+- 转写：阿里云北京地域 `qwen3-asr-flash`，使用 `stream=true` 分块接收识别文本，使用 `DASHSCOPE_API_KEY`。R8 已通过一次真实 WAV 转写，免费额度或费用以控制台为准。
 - 出题与评估：`gpt-6-luna`。`LLM_API_KEY`、`LLM_BASE_URL` 已配置在本地，使用用户提供的 sub2api 接入地址；R3 按 OpenAI 兼容 Chat Completions 格式实现，调用 Base URL 下的 `/chat/completions`；R8 已用一次真实出题与一次真实评估验证当前站点的此协议。
 - 配置模板：`apps/api/.env.example`；实际配置：`apps/api/.env`，被 Git 忽略。R2 已实现环境文件加载与配置检查。
 - 业务接口缺少对应服务配置时返回 `SERVICE_NOT_CONFIGURED`；健康检查不依赖 AI 配置。
@@ -32,14 +32,18 @@
 - 文件上限为 **4 MiB**，metadata 最多 16 KiB，给 Vercel 的 4.5 MB 请求体限制预留空间；Base64 编码发生在后端请求 Qwen 时，不占浏览器上传 multipart 的体积。
 - 接收 WebM、MP4/M4A、WAV、MP3 的声明 MIME 类型（包括 audio/webm、video/webm、audio/mp4、video/mp4、audio/m4a、audio/x-m4a、audio/wav、audio/x-wav、audio/mpeg、audio/mp3）。上传边界不做音频解码或时长探测，实际内容由 Qwen 解析；伪造 MIME 的无效内容可能返回 TRANSCRIPTION_FAILED。
 - NestJS 默认内存存储接收音频，随后通过 Base64 Data URI 发送给 Qwen；不写临时文件、不使用对象存储、不记录音频或转写内容日志。
-- Qwen 采用 Base URL 下 `/chat/completions`，`stream=false`、`asr_options.enable_itn=false`；不额外发送润色提示，不强制 language 以容纳中英混合。关闭 ITN 只控制数字标准化，不保证模型逐字保留所有口头禅。
-- 上游调用限时 60 秒，不自动重试。空白转写返回 422 EMPTY_TRANSCRIPT；超时返回 504 UPSTREAM_TIMEOUT；网络、上游非成功状态或无效响应返回 502 TRANSCRIPTION_FAILED；缺少 Key 返回 503 SERVICE_NOT_CONFIGURED。
+- Qwen 采用 Base URL 下 `/chat/completions`，`stream=true`、`asr_options.enable_itn=false`；转写分块即时送入转写 SSE。不额外发送润色提示，不强制 language 以容纳中英混合。关闭 ITN 只控制数字标准化，不保证模型逐字保留所有口头禅。
+- 上游调用限时 90 秒，不自动重试。空白转写返回 422 EMPTY_TRANSCRIPT；超时返回 504 UPSTREAM_TIMEOUT；网络、上游非成功状态或无效响应返回 502 TRANSCRIPTION_FAILED；缺少 Key 返回 503 SERVICE_NOT_CONFIGURED。
 - 参考 [Qwen-ASR 官方接口](https://help.aliyun.com/zh/model-studio/qwen-asr-api-reference)。当前保留北京地域通用域名配置；如账号要求业务空间专属域名，在 DASHSCOPE_BASE_URL 中替换，不更改代码。
-- R6 作答接口直接复用 TranscriptionService，不通过 HTTP 调用此接口，也不重复转写。
+- 页面使用此接口转写后，再把完整文本提交给独立评估接口；不重复转写。
 
-## POST /api/attempts/stream（流式作答）
+## POST /api/transcriptions/stream（流式转写）
 
-请求 multipart 字段与 `/api/attempts` 相同。响应为 `text/event-stream`，每个 `data:` 行携带一个 JSON 事件：`transcript`（完整转写文本）、`status`（进入评估阶段）、`complete`（完整 `SubmitAttemptResponse`）或 `error`（统一错误对象）。转写阶段完成即推送文本并开始评估，客户端分别展示转写和评估进度。流结束前保持连接；代理需关闭缓冲。
+请求 multipart 字段与 `/api/transcriptions` 相同。响应为 `text/event-stream`，`delta` 事件逐步返回新增文本片段，`complete` 事件返回最终完整转写文本，失败时返回 `error`。该接口只做转写，不调用评估服务。
+
+## POST /api/evaluations/stream（流式评估）
+
+请求 Content-Type 为 `application/json`，结构为 `EvaluateAttemptRequest`：完整 topic、round、durationSeconds 和 transcript。响应为 `text/event-stream`，`delta` 事件逐步返回模型生成的 JSON 文本片段，`complete` 事件返回经服务端校验的完整 `SubmitAttemptResponse`，失败时返回 `error`。该接口不接收音频、不调用转写服务。转写和评估为两次独立请求，各自维护上游超时。
 
 ## POST /api/attempts（兼容同步作答）
 
@@ -64,7 +68,7 @@
 ## 评估服务（R5）
 
 - 内部调用 `EvaluationService.evaluate(topic, attempt)`，返回 Evaluation；R6 已通过模块注入复用，不新增文字作答或独立评估 HTTP 接口。
-- 使用 LLM 配置中的模型和 Base URL 下 `/chat/completions`，同步请求，超时 60 秒，不自动重试，不额外调用模型修复格式。
+- 使用 LLM 配置中的模型和 Base URL 下 `/chat/completions`，`stream=true`，超时 90 秒，不自动重试，不额外调用模型修复格式。
 - 论题标题、描述及转写文本作为 JSON 数据传入；不把录音时长作为语速评分依据。系统提示要求立场中立，不根据赞成或反对给分，不能执行回答中夹带的指令。
 - 采用六维评分：观点与论证、结构与连贯、表达清晰度、论题回应度、具体性与例证、权衡与边界。0–2 基本未体现、3–4 只有结论或明显缺漏、5–6 基本回应但展开不足、7–8 多方面展开且有具体依据、9–10 论证扎实且权衡深入；短、泛、缺例或漏题的回答对应维度通常不高于5分。此锚点约束提示词，不代表评分已完成人工校准。
 - 模型 JSON 在进入系统时校验一次：三个不同维度、整数分数、非空摘要/依据/建议、字符串列表，以及原文引用。返回时统一维度展示顺序。
@@ -107,9 +111,9 @@ R4–R8 已验证 multipart 传输、声明格式和大小限制、Chrome 原生
 - 首次进入请求论题，开发模式 StrictMode 重放不会重复发起初始请求；换题时带上当前题目 ID。新题返回后清空两轮结果及当前录音，失败保留旧内容。
 - 使用浏览器原生 MediaRecorder，优先 WebM/Opus，其次 WebM、MP4；3 分钟自动结束，结束后停止麦克风轨道，离开页面时清理轨道和定时器。
 - 录音 Blob 只保留在当前页面。结束后提供回听、重录和提交；使用 Object URL 回听，丢弃录音或卸载时释放 URL。
-- 提交使用 `/api/attempts/stream`，不会额外调用 `/api/transcriptions`。首轮 round=1，第二轮 round=2；成功后只读展示后端响应，第二轮完成后可切换全文及比较六个维度分数。
+- 提交依次调用 `/api/transcriptions/stream` 和 `/api/evaluations/stream`；评估请求只传完整转写文本及论题元数据。首轮 round=1，第二轮 round=2；成功后只读展示后端响应，第二轮完成后可切换全文及比较六个维度分数。
 - 提交期间禁用换题、重录和重复提交；失败保留 Blob，可主动重试。两轮完成后通过换题开始新练习，不提交第三轮。
-- 前端请求出题限时 25 秒，完整作答限时 135 秒。开发使用 Vite 同源代理，分开部署时使用不含 /api 的 VITE_API_BASE_URL，Key 始终只在后端。
+- 前端请求出题限时 25 秒，每个流式请求限时 120 秒。开发使用 Vite 同源代理，分开部署时使用不含 /api 的 VITE_API_BASE_URL，Key 始终只在后端。
 - 已用 Chrome 虚拟麦克风生成具有正确 WebM 容器头的录音，验证前端 multipart → NestJS → 模拟 Qwen → 模拟评估完整链路。还验证了权限拒绝提示（模拟拒绝）、回听入口、重录、失败重试、自动结束、两轮对比、换题与刷新清空，以及移动端布局。未向真实模型发送录音。
 
 ## IndexedDB 历史（前端内部接口）
@@ -122,4 +126,4 @@ R4–R8 已验证 multipart 传输、声明格式和大小限制、Chrome 原生
 
 ## Vercel 运行配置
 
-`apps/api/vercel.json` 仅声明 NestJS 框架，不以源文件路径配置 functions；函数时限在 Vercel 控制台设置为 150 秒（Fluid Compute 默认 300 秒也足够）；前端请求限时 135 秒，转写和评估各 60 秒。生产环境 WEB_ORIGIN 填实际前端来源（不含路径），经 URL.origin 规范化后用于精确 CORS 匹配。VITE_API_BASE_URL 填后端来源，不含 /api；它是构建时变量，修改后须重新构建前端。详见 [部署指南](deployment-vercel.md)。
+`apps/api/vercel.json` 仅声明 NestJS 框架，不以源文件路径配置 functions；函数时限在 Vercel 控制台设置至少 180 秒（Fluid Compute 默认 300 秒也足够）；浏览器单次 SSE 等待上限 120 秒，ASR 与评估上游分别限时 90 秒。生产环境 WEB_ORIGIN 填实际前端来源（不含路径），经 URL.origin 规范化后用于精确 CORS 匹配。VITE_API_BASE_URL 填后端来源，不含 /api；它是构建时变量，修改后须重新构建前端。详见 [部署指南](deployment-vercel.md)。

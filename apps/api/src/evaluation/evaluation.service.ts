@@ -8,7 +8,7 @@ import { parseEvaluation } from './evaluation-result.js';
 export class EvaluationService {
   constructor(private readonly config: ApiConfig) {}
 
-  async evaluate(topic: Topic, attempt: Attempt): Promise<Evaluation> {
+  async evaluate(topic: Topic, attempt: Attempt, onDelta?: (text: string) => void): Promise<Evaluation> {
     const { apiKey, baseUrl, model } = this.config.llm;
     if (!apiKey || !baseUrl) {
       throw new ApiException(503, 'SERVICE_NOT_CONFIGURED', '回答评估服务尚未配置');
@@ -18,10 +18,10 @@ export class EvaluationService {
       const response = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(60_000),
+        signal: AbortSignal.timeout(90_000),
         body: JSON.stringify({
           model,
-          stream: false,
+          stream: true,
           max_tokens: 3600,
           messages: [
             {
@@ -47,11 +47,34 @@ featuredQuote找不到合适引用时必须为null，禁止改写原话当作引
         }),
       });
       if (!response.ok) throw new ApiException(502, 'EVALUATION_FAILED', '评估服务暂时不可用，请稍后重试');
-      const completion = await response.json() as {
-        choices?: { message?: { content?: unknown } }[];
-      } | null;
-      const content = completion?.choices?.[0]?.message?.content;
-      if (typeof content !== 'string') throw new ApiException(502, 'EVALUATION_FAILED', '评估服务未返回可读取的结果，请重试');
+      if (!response.body) throw new ApiException(502, 'EVALUATION_FAILED', '评估服务未返回可读取的结果，请重试');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let content = '';
+      const readEvent = (line: string) => {
+        if (!line.startsWith('data: ')) return;
+        const data = line.slice(6).trim();
+        if (!data || data === '[DONE]') return;
+        const chunk = JSON.parse(data) as { choices?: { delta?: { content?: unknown }; message?: { content?: unknown } }[] };
+        const text = chunk.choices?.[0]?.delta?.content ?? chunk.choices?.[0]?.message?.content;
+        if (typeof text === 'string') {
+          content += text;
+          onDelta?.(text);
+        }
+      };
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) readEvent(line.trimEnd());
+        if (done) {
+          if (buffer) readEvent(buffer.trimEnd());
+          break;
+        }
+      }
+      if (!content) throw new ApiException(502, 'EVALUATION_FAILED', '评估服务未返回可读取的结果，请重试');
       const normalized = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       let parsed: unknown;
       try {

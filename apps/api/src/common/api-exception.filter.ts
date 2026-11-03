@@ -31,7 +31,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
         ? { code: 'INTERNAL_ERROR', message: '服务暂时无法完成请求，请稍后重试' }
         : { code: 'HTTP_ERROR', message: '请求无法处理' };
     }
-    if (host.switchToHttp().getRequest<{ url?: string }>().url?.startsWith('/api/attempts/stream')) {
+    const url = host.switchToHttp().getRequest<{ url?: string }>().url ?? '';
+    if (url.startsWith('/api/transcriptions/stream') || url.startsWith('/api/evaluations/stream')) {
       response.status(status);
       response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
       response.setHeader('Cache-Control', 'no-cache, no-transform');

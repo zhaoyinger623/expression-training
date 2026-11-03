@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MindMapNode, Practice, SubmitAttemptResponse, Topic } from '@expression/shared';
-import { getTopic, submitAttempt } from './api';
+import { evaluateAttempt, getTopic, transcribeAudio } from './api';
 import { getPractice, savePractice } from './practiceStore';
 import { useRecorder } from './useRecorder';
 import { HistoryPanel } from './HistoryPanel';
@@ -14,6 +14,12 @@ function MicIcon({ recording }: { recording: boolean }) {
       </>}
     </svg>
   );
+}
+
+function RefreshIcon() {
+  return <svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+    <path d="M16.2 8A6.5 6.5 0 0 0 4.7 5.6L3.4 7M3.5 3.8v3.5H7M3.8 12a6.5 6.5 0 0 0 11.5 2.4l1.3-1.4M16.5 16.2v-3.5H13" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>;
 }
 
 function MindMap({ title, center, nodes, variant }: { title: string; center: string; nodes: MindMapNode[]; variant: 'user' | 'reference' }) {
@@ -38,6 +44,7 @@ function App() {
   const [loadingTopic, setLoadingTopic] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [streamTranscript, setStreamTranscript] = useState('');
+  const [evaluationCharacters, setEvaluationCharacters] = useState(0);
   const [error, setError] = useState('');
   const [results, setResults] = useState<SubmitAttemptResponse[]>([]);
   const [selected, setSelected] = useState(0);
@@ -99,9 +106,12 @@ function App() {
     setError('');
     try {
       setStreamTranscript('');
-      const response = await submitAttempt(recorder.audio, {
-        topic, round: results.length === 0 ? 1 : 2, durationSeconds: recorder.seconds,
-      }, setStreamTranscript);
+      setEvaluationCharacters(0);
+      const durationSeconds = recorder.seconds;
+      const transcript = await transcribeAudio(recorder.audio, durationSeconds, setStreamTranscript);
+      const response = await evaluateAttempt({
+        topic, round: results.length === 0 ? 1 : 2, durationSeconds, transcript,
+      }, setEvaluationCharacters);
       const nextResults = [...results, response];
       setResults(nextResults);
       setSelected(results.length);
@@ -179,7 +189,7 @@ function App() {
           <div className="topic-topline">
             <p className="intro-line">一次练习，从一个值得思考的问题开始。</p>
             <button className="next-topic" type="button" disabled={busy || !!pendingSave} onClick={() => void loadTopic()}>
-              {loadingTopic ? '获取中…' : '换一题'} <span aria-hidden="true">↗</span>
+              {loadingTopic ? '获取中…' : '换一题'} <RefreshIcon />
             </button>
           </div>
           <h1 id="topic-title" className="topic-title">{topic?.title ?? (loadingTopic ? '正在准备论题…' : '论题暂时无法获取')}</h1>
@@ -194,7 +204,7 @@ function App() {
         {topic && showAnswer && <section className="answer-view" aria-labelledby="answer-title">
           <div className="answer-heading">
             <h2 id="answer-title">{results.length ? '把想法再说一次' : '把想法说出来'}</h2>
-            <p id="recording-hint">建议作答 1–3 分钟，3 分钟时自动结束。录音上限 4 MiB。</p>
+            <p id="recording-hint">建议作答 1–3 分钟，3 分钟时自动结束。</p>
             {results.length === 1 && <p className="practice-focus">本次重点：{results[0].evaluation.nextStep}</p>}
           </div>
           <div className="answer-center">
@@ -215,7 +225,7 @@ function App() {
                   {submitting ? '处理中…' : error ? '重试提交' : '提交回答'}
                 </button>
               </div>
-              {submitting && <div className="stream-progress" role="status"><p>{streamTranscript ? '转写完成，正在生成评估…' : '正在转写录音…'}</p>{streamTranscript && <p className="stream-transcript">{streamTranscript}</p>}</div>}
+              {submitting && <div className="stream-progress" role="status"><p>{streamTranscript ? (evaluationCharacters ? `AI 正在流式生成评估…（已接收 ${evaluationCharacters} 字）` : '转写完成，正在启动 AI 评估…') : '正在流式转写录音…'}</p>{streamTranscript && <p className="stream-transcript">{streamTranscript}</p>}</div>}
             </div>}
             {results.length === 1 && !recording && !requesting && !submitting && <button className="text-button" type="button" onClick={() => { recorder.reset(); setError(''); setShowAnswer(false); }}>返回首次反馈</button>}
           </div>

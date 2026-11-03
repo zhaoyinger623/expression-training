@@ -31,7 +31,27 @@ export async function savePractice(practice: Practice): Promise<void> {
 export async function getPractice(id: string): Promise<Practice> {
   const practice = await withStore<Practice | undefined>('readonly', (store) => store.get(id));
   if (!practice) throw new Error('未找到这次练习，记录可能已被清除。');
-  return practice;
+  const results = practice.results.map((result) => {
+    const evaluation = result.evaluation;
+    return {
+      ...result,
+      evaluation: {
+        ...evaluation,
+        overallScore: typeof evaluation.overallScore === 'number'
+          ? evaluation.overallScore
+          : Math.round((evaluation.dimensions ?? []).reduce((sum, item) => sum + item.score, 0) / Math.max(evaluation.dimensions?.length ?? 0, 1)),
+        userMindMap: evaluation.userMindMap ?? [],
+        referenceMindMap: evaluation.referenceMindMap ?? [],
+        referenceAnswer: evaluation.referenceAnswer ?? '',
+        evidenceQuotes: evaluation.evidenceQuotes ?? [],
+        dimensions: evaluation.dimensions ?? [],
+        strengths: evaluation.strengths ?? [],
+        issues: evaluation.issues ?? [],
+        featuredQuote: evaluation.featuredQuote ?? null,
+      },
+    };
+  });
+  return { ...practice, results };
 }
 
 export async function getPracticeHistory(offset = 0): Promise<PracticeHistoryResponse> {

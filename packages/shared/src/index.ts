@@ -35,9 +35,13 @@ export interface MindMapNode {
   children: MindMapNode[];
 }
 
-export type AttemptStreamEvent =
-  | { type: 'transcript'; transcript: string }
-  | { type: 'status'; stage: 'evaluating' }
+export type TranscriptionStreamEvent =
+  | { type: 'delta'; text: string }
+  | { type: 'complete'; transcript: string }
+  | { type: 'error'; error: ApiErrorResponse };
+
+export type EvaluationStreamEvent =
+  | { type: 'delta'; text: string }
   | { type: 'complete'; result: SubmitAttemptResponse }
   | { type: 'error'; error: ApiErrorResponse };
 
@@ -65,6 +69,10 @@ export interface SubmitAttemptMetadata {
   topic: Topic;
   round: 1 | 2;
   durationSeconds: number;
+}
+
+export interface EvaluateAttemptRequest extends SubmitAttemptMetadata {
+  transcript: string;
 }
 
 export interface SubmitAttemptResponse {
