@@ -79,7 +79,7 @@ pnpm build
 
 metadata 为 JSON 字符串，包含完整 `topic`、数字 `round`（1 或 2）及数字 `durationSeconds`（大于 0、不超过 180）。成功返回 HTTP 201、`{ attempt, evaluation }`；评估 ID 与作答 ID 由后端关联。主流程直接调用完整作答接口，不先调用独立转写接口。
 
-项目设计与 R1–R8 阶段见 [design.md](design.md)，版本状态见 [version.md](version.md)。
+项目设计见 [design.md](design.md)，开发顺序与 R1–R8 阶段见 [开发计划](docs/development-plan.md)，具体检查结果见 [验收记录](docs/acceptance.md)，版本状态见 [version.md](version.md)。
 
 ## 常见问题
 
