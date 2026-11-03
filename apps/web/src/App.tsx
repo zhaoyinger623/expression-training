@@ -197,7 +197,7 @@ function App() {
         {showHistory ? <HistoryPanel onOpen={(id) => void openPractice(id)} openingId={openingId} detailError={error} /> : <>
         <section className={`${styles['topic-view']} ${!showAnswer ? styles['topic-view-compact'] : ''}`} aria-labelledby="topic-title" aria-busy={loadingTopic}>
           <div className={styles['topic-topline']}>
-            <p className={styles['intro-line']}>一次练习，从一个值得思考的问题开始。</p>
+            <p className={styles['intro-line']}>今天，慢慢聊一个问题。</p>
             <button className={styles['next-topic']} type="button" disabled={busy || !!pendingSave} onClick={() => void loadTopic()}>
               {loadingTopic ? '获取中…' : '换一题'} <RefreshIcon />
             </button>
@@ -218,9 +218,15 @@ function App() {
             {results.length === 1 && <p className={styles['practice-focus']}>本次重点：{results[0].evaluation.nextStep}</p>}
           </div>
           <div className={styles['answer-center']}>
+            <div className={styles['companion-scene']} aria-hidden="true">
+              <picture>
+                <source media="(prefers-reduced-motion: reduce)" srcSet="/companion-still.png" />
+                <img className={styles['recording-companion']} src={recording ? '/recording-companion.gif' : '/companion-still.png'} alt="" width="112" height="112" />
+              </picture>
+            </div>
+            <p className={styles['companion-message']}>{recording ? '慢慢说，停顿一下也没关系。' : submitting ? '正在整理你的回答，稍等一会儿。' : recorder.phase === 'recorded' ? '说完了，可以先听听自己的声音。' : '慢慢想，准备好了就开始。'}</p>
             {(recording || recorder.phase === 'recorded') && <div className={styles['recording-time']} aria-label={`录音时长 ${time}`}>{time}</div>}
             {(recorder.phase === 'idle' || requesting || recording) && <>
-              {recording && <img className={styles['recording-companion']} src="/recording-companion.gif" alt="" aria-hidden="true" />}
               <button className={`${styles['mic-control']} ${recording ? styles['is-recording'] : ''}`} type="button"
                 disabled={loadingTopic || submitting || requesting} aria-label={recording ? '结束录音' : '开始录音'} aria-describedby="recording-hint"
                 onClick={() => { setError(''); if (recording) recorder.stop(); else void recorder.start(); }}>
@@ -238,7 +244,7 @@ function App() {
                   </button>
                 </div>
               </div>
-              {submitting && <div className={styles['stream-progress']} role="status"><p>{streamTranscript ? (evaluationCharacters ? `AI 正在流式生成评估…（已接收 ${evaluationCharacters} 字）` : '转写完成，正在启动 AI 评估…') : '正在流式转写录音…'}</p>{streamTranscript && <p className={styles['stream-transcript']}>{streamTranscript}</p>}</div>}
+              {submitting && <div className={styles['stream-progress']} role="status"><p>{streamTranscript ? (evaluationCharacters ? '正在梳理表达亮点和练习建议…' : '文字整理好了，正在分析你的表达…') : '正在把你的声音整理成文字…'}</p>{streamTranscript && <p className={styles['stream-transcript']}>{streamTranscript}</p>}</div>}
             </div>}
             {results.length === 1 && !recording && !requesting && !submitting && <button className={styles['text-button']} type="button" onClick={() => { recorder.reset(); setError(''); setShowAnswer(false); }}>返回首次反馈</button>}
           </div>
@@ -265,20 +271,7 @@ function App() {
           </section>
           <section className={styles['feedback-view']} aria-labelledby="feedback-title">
             <div className={styles['feedback-heading']}><h2 id="feedback-title" tabIndex={-1} ref={feedbackTitle}>{result.evaluation.summary}</h2></div>
-            <section className={styles['overall-score']} aria-label={`本次总分 ${result.evaluation.overallScore} 分，共 10 分`}>
-              <div className={styles['overall-score-copy']}><span>OVERALL SCORE · 6 DIMENSIONS</span><h3>本次总分</h3><p>把表达的整体表现，变成下一步练习的起点。</p></div>
-              <div className={styles['overall-score-value']}><strong>{result.evaluation.overallScore}</strong><span>/ 10</span></div>
-              <div className={styles['score-track']} aria-hidden="true"><i style={{ width: `${result.evaluation.overallScore * 10}%` }} /></div>
-            </section>
-            <div className={styles['mindmap-grid']}>
-              <MindMap title="你的回答与待改进点" center={topic?.title ?? '你的回答'} nodes={result.evaluation.userMindMap} variant="user" />
-              <MindMap title="参考回答思路" center="清晰表达的结构" nodes={result.evaluation.referenceMindMap} variant="reference" />
-            </div>
-            <div className={styles['dimension-list']}>{result.evaluation.dimensions.map((item) => <article className={styles['dimension-row']} key={item.name}>
-              <div className={styles['dimension-top']}><h3>{item.name}</h3><span>{item.score}<small> / 10</small></span></div>
-              <p>{item.reason}</p><p className={styles['dimension-suggestion']}>{item.suggestion}</p>
-            </article>)}</div>
-            <section className={styles['reference-answer']}><h3>参考文字答案</h3><div className={styles['reference-answer-body']}>{result.evaluation.referenceAnswer.split('\n').map((line, index) => <p key={index}>{renderHighlightedLine(line)}</p>)}</div></section>
+            <div className={styles['feedback-companion']}><img src="/companion-still.png" alt="" width="64" height="64" /><p>一起看看，哪些地方可以更清楚。</p></div>
             <section className={styles['evidence-feedback']} aria-labelledby="evidence-title">
               <h3 id="evidence-title">从你的原话来看</h3>
               <div className={styles['evidence-list']}>{result.evaluation.evidenceQuotes.map((item, index) => <article className={`${styles['evidence-card']} ${styles[`evidence-${item.kind}`]}`} key={`${item.kind}-${index}`}>
@@ -288,10 +281,34 @@ function App() {
               </article>)}</div>
             </section>
             <section className={`${styles['feedback-next']} ${styles['feedback-next-bottom']}`}>
-              <div><span className={styles['next-step-label']}>NEXT STEP</span><h3>{results.length === 1 ? '再答一次时，试试这样做' : '下次练习，试试这样做'}</h3><p>{result.evaluation.nextStep}</p></div>
+              <div><span className={styles['next-step-label']}>下一小步</span><h3>{results.length === 1 ? '再答一次时，试试这样做' : '下次练习，试试这样做'}</h3><p>{result.evaluation.nextStep}</p></div>
               {results.length === 1 ? <button className={`${styles['button']} ${styles['button-primary']}`} type="button" disabled={busy} onClick={answerAgain}>同题再答一次 <span aria-hidden="true">↗</span></button>
                 : <button className={`${styles['button']} ${styles['button-primary']}`} type="button" disabled={busy || !!pendingSave} onClick={() => void loadTopic()}>换一题继续练习 <span aria-hidden="true">↗</span></button>}
             </section>
+            <section className={styles['overall-score']} aria-label={`本次总分 ${result.evaluation.overallScore} 分，共 10 分`}>
+              <div className={styles['overall-score-copy']}><span>本次练习 · 六个维度</span><h3>本次总分</h3><p>把表达的整体表现，变成下一步练习的起点。</p></div>
+              <div className={styles['overall-score-value']}><strong>{result.evaluation.overallScore}</strong><span>/ 10</span></div>
+              <div className={styles['score-track']} aria-hidden="true"><i style={{ width: `${result.evaluation.overallScore * 10}%` }} /></div>
+            </section>
+            <details className={styles['feedback-disclosure']} key={`maps-${result.attempt.id}`}>
+              <summary>看看回答思路</summary>
+            <div className={styles['mindmap-grid']}>
+              <MindMap title="你的回答与待改进点" center={topic?.title ?? '你的回答'} nodes={result.evaluation.userMindMap} variant="user" />
+              <MindMap title="参考回答思路" center="清晰表达的结构" nodes={result.evaluation.referenceMindMap} variant="reference" />
+            </div>
+            </details>
+            <details className={styles['feedback-disclosure']} key={`dimensions-${result.attempt.id}`}>
+              <summary>查看六个维度的具体反馈</summary>
+            <div className={styles['dimension-list']}>{result.evaluation.dimensions.map((item) => <article className={styles['dimension-row']} key={item.name}>
+              <div className={styles['dimension-top']}><h3>{item.name}</h3><span>{item.score}<small> / 10</small></span></div>
+              <p>{item.reason}</p><p className={styles['dimension-suggestion']}>{item.suggestion}</p>
+            </article>)}</div>
+            </details>
+            <details className={styles['feedback-disclosure']} key={`reference-${result.attempt.id}`}>
+              <summary>读一份参考回答</summary>
+            <section className={styles['reference-answer']}><h3>参考文字答案</h3><div className={styles['reference-answer-body']}>{result.evaluation.referenceAnswer.split('\n').map((line, index) => <p key={index}>{renderHighlightedLine(line)}</p>)}</div></section>
+            </details>
+
           </section>
         </div>}
         </>}
