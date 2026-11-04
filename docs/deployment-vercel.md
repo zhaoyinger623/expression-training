@@ -131,6 +131,8 @@ IndexedDB 保存失败时，页面会保留反馈并提供“重试保存”，�
 
 查看后端项目的 Logs / Functions 日志定位问题，不要在日志或截图中公开 Key。此文档给出配置和预期结果，不代表已经完成云端验收。
 
+转写日志 `asr_timing` 只包含模型、音频字节数、函数地域及耗时，不包含录音、识别文本或 Key。`headersMs` 是发起上游请求到收到响应头的耗时，`firstTextMs` 是到首段非空文本的耗时，`totalMs` 是整个上游调用耗时（均为毫秒，包含请求传输）。这些指标不包含浏览器上传到后端、函数冷启动的时间；可结合浏览器 Network 的上传和等待阶段判断。若浏览器等待明显长于 `totalMs`，需继续检查上传、冷启动和网络路径；若 `firstTextMs` 接近 `totalMs` 且均较长，等待主要发生在上游返回首段文字之前。
+
 ### TypeScript 7 构建兼容说明
 
 后端 `tsconfig.json` 显式设置 `typeRoots: ["./node_modules/@types"]`，相对路径以原 tsconfig 所在目录为基准。Vercel 的 TypeScript 7 适配器通过临时目录中的配置继承项目配置；若仅声明 types: ["node"]，默认类型查找可能从临时目录开始，从而触发 TS2688，即使 apps/api 已安装 @types/node。本地已复现该配置迁移后的编译错误，添加 typeRoots 后同一编译通过。[Vercel 编译器实现](https://github.com/vercel/vercel/blob/main/packages/node/src/typescript.ts)

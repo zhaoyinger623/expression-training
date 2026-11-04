@@ -32,7 +32,7 @@ export function useRecorder() {
     reset();
     setPhase('requesting');
     try {
-      const input = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const input = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
       if (!mounted.current) {
         input.getTracks().forEach((track) => track.stop());
         return;
@@ -40,7 +40,7 @@ export function useRecorder() {
       stream.current = input;
       const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((type) => MediaRecorder.isTypeSupported(type));
       if (!mimeType) throw new Error('UNSUPPORTED_RECORDING');
-      const recording = new MediaRecorder(input, { mimeType });
+      const recording = new MediaRecorder(input, { mimeType, audioBitsPerSecond: 32_000 });
       recorder.current = recording;
       const chunks: Blob[] = [];
       let failed = false;
