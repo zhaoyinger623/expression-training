@@ -2,6 +2,21 @@
 
 单用户中文表达练习项目，使用 pnpm workspace + Turborepo 管理 React 前端与 NestJS 后端。
 
+## 录音模式开关
+
+修改 `apps/web/src/config/recording.ts` 的 `recordingMode`，重新构建前端：
+
+```ts
+export const recordingMode: 'realtime' | 'upload' = 'realtime';
+```
+
+- `realtime`（默认）：开始录音后通过 WebSocket 实时上传、显示只读文字；结束录音确认尾句后，点击提交直接评估。保留本地录音供回听与重录。开始录音即调用 ASR，即使未提交也可能产生识别费用。
+- `upload`：录音期间只保存在浏览器，点击提交后整段上传、转写，再评估。
+
+实时服务沿用后端 `DASHSCOPE_API_KEY`，默认模型为 `qwen3-asr-flash-realtime`，可通过 `ASR_REALTIME_MODEL` 调整；`ASR_REALTIME_URL` 可覆盖由 `DASHSCOPE_BASE_URL` 推导的同地域 WebSocket 地址。Key 不发送到前端。实时连接失败或断开时保留录音，提示用户提交后通过原整段上传接口转写，不将草稿用于评估，不自动重连或重放录音。
+
+本地 Vite 已配置 WebSocket 转发；访问的前端来源须与后端 `WEB_ORIGIN` 一致（`localhost` 与 `127.0.0.1` 属于不同来源）。Vercel 后端启用 Fluid Compute，函数时限至少 240 秒，建议 300 秒；前后端都需重新部署。详见 [部署指南](docs/deployment-vercel.md)。
+
 ## 当前状态
 
 R1–R8 已完成实现与首轮验收：获取论题、浏览器录音、回听与重录、自动转写和三维评估、同题两轮回答对比。页面使用后端返回的内容，不再展示静态示例。新增 IndexedDB 浏览器练习历史：成功作答后自动保存论题、转写文本与反馈，刷新或重新打开同域名网站后可从历史记录打开；不保存音频。

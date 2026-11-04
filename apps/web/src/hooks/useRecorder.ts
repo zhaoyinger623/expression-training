@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
+import { recordingMode } from '../config/recording';
+import { connectRealtimeTranscription, type RealtimeSession } from '../api/realtimeTranscription';
+import { startPcmCapture } from './pcmCapture';
 
 export function useRecorder() {
   const [phase, setPhase] = useState<'idle' | 'requesting' | 'recording' | 'recorded'>('idle');
   const [audio, setAudio] = useState<Blob | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState('');
+  const [transcript, setTranscript] = useState('');
+  const [realtimeStatus, setRealtimeStatus] = useState<'idle' | 'connecting' | 'listening' | 'finalizing' | 'complete' | 'failed'>('idle');
+  const [realtimeError, setRealtimeError] = useState('');
+  const realtime = useRef<{ session: RealtimeSession; capture: Awaited<ReturnType<typeof startPcmCapture>> } | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const interval = useRef<number | undefined>(undefined);
@@ -18,6 +25,12 @@ export function useRecorder() {
   }
 
   function reset() {
+    realtime.current?.session.cancel();
+    realtime.current?.capture.cancel();
+    realtime.current = null;
+    setTranscript('');
+    setRealtimeStatus('idle');
+    setRealtimeError('');
     setAudio(null);
     setSeconds(0);
     setError('');
@@ -41,6 +54,32 @@ export function useRecorder() {
       const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((type) => MediaRecorder.isTypeSupported(type));
       if (!mimeType) throw new Error('UNSUPPORTED_RECORDING');
       const recording = new MediaRecorder(input, { mimeType, audioBitsPerSecond: 32_000 });
+      if (recordingMode === 'realtime') {
+        setRealtimeStatus('connecting');
+        let session: RealtimeSession | undefined;
+        let connectionFailed = false;
+        try {
+          session = await connectRealtimeTranscription(setTranscript, (message) => {
+            connectionFailed = true;
+            setRealtimeStatus('failed');
+            setRealtimeError(message);
+          });
+          const capture = await startPcmCapture(input, session.write);
+          if (!mounted.current) { session.cancel(); capture.cancel(); input.getTracks().forEach(track => track.stop()); return; }
+          if (connectionFailed) {
+            session.cancel();
+            capture.cancel();
+          } else {
+            realtime.current = { session, capture };
+            setRealtimeStatus('listening');
+          }
+        } catch (cause) {
+          session?.cancel();
+          if (!mounted.current) { input.getTracks().forEach(track => track.stop()); return; }
+          setRealtimeStatus('failed');
+          setRealtimeError(cause instanceof Error ? cause.message : '无法开始实时转写');
+        }
+      }
       recorder.current = recording;
       const chunks: Blob[] = [];
       let failed = false;
@@ -52,18 +91,27 @@ export function useRecorder() {
         failed = true;
         stop();
         input.getTracks().forEach((track) => track.stop());
+        realtime.current?.session.cancel();
+        realtime.current?.capture.cancel();
+        realtime.current = null;
+        setRealtimeStatus('failed');
         setPhase('idle');
         setError('录音中断，请检查麦克风后重新录音。');
       };
-      recording.onstop = () => {
+      recording.onstop = async () => {
         clearInterval(interval.current);
         clearTimeout(limit.current);
+        const active = realtime.current;
+        const finishing = active?.capture.stop();
         input.getTracks().forEach((track) => track.stop());
         stream.current = null;
         recorder.current = null;
         if (failed) return;
         const blob = new Blob(chunks, { type: recording.mimeType });
         if (!blob.size || blob.size > 4 * 1024 * 1024) {
+          active?.session.cancel();
+          void finishing?.catch(() => {});
+          realtime.current = null;
           setPhase('idle');
           setError(blob.size ? '录音超过 4 MiB，请重新录制较短的回答。' : '没有录到声音数据，请重新录音。');
           return;
@@ -71,12 +119,32 @@ export function useRecorder() {
         setAudio(blob);
         setSeconds(Math.min((performance.now() - startedAt) / 1000, 180));
         setPhase('recorded');
+        if (active) {
+          setRealtimeStatus('finalizing');
+          try {
+            await finishing;
+            const text = await active.session.finish();
+            if (realtime.current !== active) return;
+            setTranscript(text);
+            setRealtimeStatus('complete');
+          } catch (cause) {
+            if (realtime.current !== active) return;
+            active.session.cancel();
+            setRealtimeStatus('failed');
+            setRealtimeError(cause instanceof Error ? cause.message : '实时转写未完成');
+          } finally {
+            if (realtime.current === active) realtime.current = null;
+          }
+        }
       };
       recording.start();
       setPhase('recording');
       interval.current = window.setInterval(() => setSeconds(Math.min(Math.floor((performance.now() - startedAt) / 1000), 180)), 250);
       limit.current = window.setTimeout(stop, 180_000);
     } catch (cause) {
+      realtime.current?.session.cancel();
+      realtime.current?.capture.cancel();
+      realtime.current = null;
       stream.current?.getTracks().forEach((track) => track.stop());
       stream.current = null;
       setPhase('idle');
@@ -104,8 +172,11 @@ export function useRecorder() {
         if (recorder.current.state === 'recording') recorder.current.stop();
       }
       stream.current?.getTracks().forEach((track) => track.stop());
+      realtime.current?.session.cancel();
+      realtime.current?.capture.cancel();
+      realtime.current = null;
     };
   }, []);
 
-  return { phase, audio, seconds, error, start, stop, reset };
+  return { phase, audio, seconds, error, transcript, realtimeStatus, realtimeError, start, stop, reset };
 }

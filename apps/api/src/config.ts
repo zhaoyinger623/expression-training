@@ -8,6 +8,7 @@ export class ApiConfig {
   readonly port: number;
   readonly webOrigin: string;
   readonly asr: { apiKey: string; baseUrl: string; model: string };
+  readonly realtimeAsr: { url: string; model: string };
   readonly llm: { apiKey: string; baseUrl: string; model: string };
 
   constructor() {
@@ -24,6 +25,13 @@ export class ApiConfig {
       baseUrl: process.env.DASHSCOPE_BASE_URL ?? 'https://dashscope.aliyuncs.com/compatible-mode/v1',
       model: process.env.ASR_MODEL ?? 'qwen3-asr-flash',
     };
+    this.realtimeAsr = {
+      url: process.env.ASR_REALTIME_URL ?? `${this.asr.baseUrl.replace(/\/compatible-mode\/v1\/?$/, '/api-ws/v1/realtime').replace(/^http/, 'ws')}`,
+      model: process.env.ASR_REALTIME_MODEL ?? 'qwen3-asr-flash-realtime',
+    };
+    if (!URL.canParse(this.realtimeAsr.url) || !['ws:', 'wss:'].includes(new URL(this.realtimeAsr.url).protocol)) {
+      throw new Error('ASR_REALTIME_URL 必须为有效的 WS(S) 地址');
+    }
     this.llm = {
       apiKey: process.env.LLM_API_KEY ?? '',
       baseUrl: process.env.LLM_BASE_URL ?? '',

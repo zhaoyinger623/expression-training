@@ -53,6 +53,13 @@ export type TranscriptionStreamEvent =
   | { type: 'complete'; transcript: string }
   | { type: 'error'; error: ApiErrorResponse };
 
+/** 实时转写 WebSocket：客户端发送 16kHz 单声道 PCM16 二进制帧，结束时发送 { type: 'finish' }。 */
+export type RealtimeTranscriptionEvent =
+  | { type: 'ready' }
+  | { type: 'transcript'; transcript: string }
+  | { type: 'complete'; transcript: string }
+  | { type: 'error'; error: ApiErrorResponse };
+
 export type EvaluationStreamEvent =
   | { type: 'delta'; text: string }
   | { type: 'complete'; result: SubmitAttemptResponse }

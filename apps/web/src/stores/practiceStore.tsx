@@ -36,7 +36,7 @@ function usePracticeState() {
   const recorder = useRecorder();
   const recording = recorder.phase === 'recording';
   const requesting = recorder.phase === 'requesting';
-  const busy = loadingTopic || submitting || recording || requesting || saving || openingId !== null;
+  const busy = loadingTopic || submitting || recording || requesting || recorder.realtimeStatus === 'finalizing' || saving || openingId !== null;
   const result = results[selected];
 
   async function loadTopic() {
@@ -80,7 +80,10 @@ function usePracticeState() {
       setStreamTranscript('');
       setEvaluationCharacters(0);
       const durationSeconds = recorder.seconds;
-      const transcript = await transcribeAudio(recorder.audio, durationSeconds, setStreamTranscript);
+      const transcript = recorder.realtimeStatus === 'complete'
+        ? recorder.transcript
+        : await transcribeAudio(recorder.audio, durationSeconds, setStreamTranscript);
+      setStreamTranscript(transcript);
       const response = await evaluateAttempt({
         topic, round: results.length === 0 ? 1 : 2, durationSeconds, transcript,
         ...(results[0] ? { firstAnswer: { transcript: results[0].attempt.transcript, nextStep: results[0].evaluation.nextStep } } : {}),

@@ -3,6 +3,7 @@ import { MicIcon, RefreshIcon } from './components/Icons';
 import { PracticeFeedback } from './components/PracticeFeedback';
 import styles from './practice.module.less';
 import common from '../../components/common.module.less';
+import { recordingMode } from '../../config/recording';
 
 export default function PracticePage() {
   const { topic, loadingTopic, submitting, streamTranscript, evaluationCharacters, error, setError, results, showAnswer, setShowAnswer, audioUrl, pendingSave, recorder, recording, requesting, busy, result, loadTopic, submit } = usePracticeStore();
@@ -29,6 +30,7 @@ export default function PracticePage() {
       <div className={styles['answer-heading']}>
         <h2 id="answer-title">{results.length ? '把想法再说一次' : '把想法说出来'}</h2>
         <p id="recording-hint">建议作答 1–3 分钟，3 分钟时自动结束。</p>
+        {recordingMode === 'realtime' && <p className={common['status-text']}>开始录音后会实时上传语音并转写，可先回听再提交评估。</p>}
         {results.length === 1 && <p className={styles['practice-focus']}>本次重点：{results[0].evaluation.nextStep}</p>}
       </div>
       <div className={styles['answer-center']}>
@@ -46,19 +48,26 @@ export default function PracticePage() {
             onClick={() => { setError(''); if (recording) recorder.stop(); else void recorder.start(); }}>
             <MicIcon recording={recording} />
           </button>
-          <p className={styles['mic-caption']} role="status">{requesting ? '请允许浏览器使用麦克风…' : recording ? '正在录音，点击方块结束' : '点击话筒，开始回答'}</p>
+          <p className={styles['mic-caption']} role="status">{requesting ? (recorder.realtimeStatus === 'connecting' ? '正在连接实时转写…' : '请允许浏览器使用麦克风…') : recording ? '正在录音，点击方块结束' : '点击话筒，开始回答'}</p>
         </>}
         {recorder.phase === 'recorded' && <div className={styles['recording-review']}>
           <div className={styles['recording-review-controls']}>
             <audio controls src={audioUrl} aria-label="回听本次录音" />
             <div className={styles['recording-actions']}>
-              <button className={`${styles['button']} ${common['button-secondary']}`} type="button" disabled={submitting} onClick={() => { setError(''); recorder.reset(); }}>重新录音</button>
-              <button className={`${styles['button']} ${common['button-primary']}`} type="button" disabled={submitting || loadingTopic} onClick={() => void submit()}>
-                {submitting ? '处理中…' : error ? '重试提交' : '提交回答'}
+              <button className={`${styles['button']} ${common['button-secondary']}`} type="button" disabled={submitting || recorder.realtimeStatus === 'finalizing'} onClick={() => { setError(''); recorder.reset(); }}>重新录音</button>
+              <button className={`${styles['button']} ${common['button-primary']}`} type="button" disabled={submitting || loadingTopic || recorder.realtimeStatus === 'finalizing'} onClick={() => void submit()}>
+                {submitting ? '处理中…' : recorder.realtimeStatus === 'finalizing' ? '正在确认转写…' : error ? '重试提交' : '提交回答'}
               </button>
             </div>
           </div>
           {submitting && <div className={styles['stream-progress']} role="status"><p>{streamTranscript ? (evaluationCharacters ? '正在梳理表达亮点和练习建议…' : '文字整理好了，正在分析你的表达…') : '正在把你的声音整理成文字…'}</p>{streamTranscript && <p className={styles['stream-transcript']}>{streamTranscript}</p>}</div>}
+        </div>}
+        {recordingMode === 'realtime' && recorder.phase !== 'idle' && !submitting && <div className={styles['stream-progress']}>
+          <p className={common['status-text']} role="status">{recorder.realtimeStatus === 'failed'
+            ? `${recorder.realtimeError}。录音会保留，提交时将使用完整录音重新转写。`
+            : recorder.realtimeStatus === 'finalizing' ? '录音已结束，正在确认最后一段文字…'
+              : recorder.realtimeStatus === 'complete' ? '转写已完成，可回听后提交。' : '边说边转写，文字会实时更新。'}</p>
+          {recorder.transcript && <p className={styles['stream-transcript']} aria-label="实时转写文本">{recorder.transcript}</p>}
         </div>}
         {results.length === 1 && !recording && !requesting && !submitting && <button className={common['text-button']} type="button" onClick={() => { recorder.reset(); setError(''); setShowAnswer(false); }}>返回首次反馈</button>}
       </div>

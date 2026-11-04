@@ -58,7 +58,7 @@ https://你的后端域名/api/health
 
 预期显示 `{"status":"ok"}`。健康检查不调用 AI；它成功不代表模型服务已经连通。
 
-仓库的 `apps/api/vercel.json` 仅声明 NestJS 原生框架，由 Vercel 识别 `src/main.ts` 入口并生成函数；不要把该源文件路径写入 `functions` 匹配规则，否则当前部署器可能报 unused_function。执行时限在后端项目 **Settings → Functions → Function Max Duration** 中设置为至少 **180 秒**，保存后重新部署；也可保留 Fluid Compute 的 300 秒默认值。在这里确认 Fluid Compute 已启用，并在部署后函数详情中核对有效时限。转写和评估分别通过 SSE 请求，上游分别限时 90 秒，浏览器单次请求等待上限 120 秒。Vercel 官方支持 [NestJS 入口识别](https://vercel.com/docs/frameworks/backend/nestjs) 和 [函数执行时限配置](https://vercel.com/docs/functions/configuring-functions/duration)。
+仓库的 `apps/api/vercel.json` 仅声明 NestJS 原生框架，由 Vercel 识别 `src/main.ts` 入口并生成函数；不要把该源文件路径写入 `functions` 匹配规则，否则当前部署器可能报 unused_function。执行时限在后端项目 **Settings → Functions → Function Max Duration** 中设置为至少 **240 秒**，保存后重新部署；也可保留 Fluid Compute 的 300 秒默认值。在这里确认 Fluid Compute 已启用，并在部署后函数详情中核对有效时限。转写和评估分别通过 SSE 请求，上游分别限时 90 秒，浏览器单次请求等待上限 120 秒。Vercel 官方支持 [NestJS 入口识别](https://vercel.com/docs/frameworks/backend/nestjs) 和 [函数执行时限配置](https://vercel.com/docs/functions/configuring-functions/duration)。
 
 ## 4. 创建前端项目
 
@@ -136,3 +136,14 @@ IndexedDB 保存失败时，页面会保留反馈并提供“重试保存”，�
 ### TypeScript 7 构建兼容说明
 
 后端 `tsconfig.json` 显式设置 `typeRoots: ["./node_modules/@types"]`，相对路径以原 tsconfig 所在目录为基准。Vercel 的 TypeScript 7 适配器通过临时目录中的配置继承项目配置；若仅声明 types: ["node"]，默认类型查找可能从临时目录开始，从而触发 TS2688，即使 apps/api 已安装 @types/node。本地已复现该配置迁移后的编译错误，添加 typeRoots 后同一编译通过。[Vercel 编译器实现](https://github.com/vercel/vercel/blob/main/packages/node/src/typescript.ts)
+
+
+## 实时录音部署补充
+
+默认录音模式已切为实时转写，代码开关位于 `apps/web/src/config/recording.ts`；改为 `upload` 并重新构建前端即可恢复提交后统一上传。
+
+- 后端使用 `/api/transcriptions/realtime` 的 HTTP Upgrade，按连接建立到阿里云的独立 WebSocket。Vercel 当前支持 Node.js 的标准 `ws` 接入，需启用 Fluid Compute；配置函数最大时限至少 240 秒，建议 300 秒，覆盖最长 180 秒录音与连接、收尾等待。[Vercel WebSocket 文档](https://vercel.com/docs/functions/websockets)
+- 沿用 `DASHSCOPE_API_KEY`，模型默认 `qwen3-asr-flash-realtime`。可选 `ASR_REALTIME_URL` 指定与 Key 匹配地域的 `/api-ws/v1/realtime` 地址，`ASR_REALTIME_MODEL` 指定实时模型，不能用普通文件转写模型代替。默认从 `DASHSCOPE_BASE_URL` 的 `/compatible-mode/v1` 推导；使用不遵循此路径的代理时需显式填写。[阿里云实时接口](https://help.aliyun.com/en/model-studio/qwen-asr-realtime-client-events)
+- 前端仍只配置 `VITE_API_BASE_URL`。WebSocket 使用精确 `WEB_ORIGIN` 校验；平台 Deployment Protection 或代理须允许该路径 Upgrade。来源校验沿用单用户部署范围，不是账户认证。
+- 开始录音即上传音频并调用识别；失败后本地录音保留，用户点击提交时才回退整段转写，可能额外产生文件识别费用。正常实时完成不会重复调用文件转写。
+- 云端验收需确认 Network 中出现 `101 Switching Protocols`、说话时文字更新、结束后尾句完整、提交仅调用评估接口；现有本地模拟通过不代表云端已验证。
