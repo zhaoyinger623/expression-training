@@ -7,14 +7,15 @@ import { usePracticeStore } from '../stores/practiceStore';
 
 export function AppRouter() {
   const [page, setPage] = useState<'practice' | 'history'>('practice');
-  const { busy, pendingSave, setError, error, openingId, openPractice } = usePracticeStore();
+  const { busy, pendingSave, error, openingId, openPractice } = usePracticeStore();
 
-  return <AppLayout page={page} disabled={busy || !!pendingSave} onNavigate={(next) => { setError(''); setPage(next); }}>
+  return <AppLayout page={page} onNavigate={setPage}>
     <SaveNotice />
     {page === 'practice' ? <PracticePage /> : <HistoryPage
       onOpen={(id) => { void openPractice(id).then((opened) => { if (opened) setPage('practice'); }); }}
       openingId={openingId}
       detailError={error}
+      openDisabled={busy || !!pendingSave}
     />}
   </AppLayout>;
 }

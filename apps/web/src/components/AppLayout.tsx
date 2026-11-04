@@ -1,18 +1,17 @@
 import type { ReactNode } from 'react';
 import styles from './appLayout.module.less';
 
-export function AppLayout({ children, page, disabled, onNavigate }: {
+export function AppLayout({ children, page, onNavigate }: {
   children: ReactNode;
   page: 'practice' | 'history';
-  disabled: boolean;
   onNavigate: (page: 'practice' | 'history') => void;
 }) {
   return (
     <div className={styles['app-shell']}>
       <header className={styles['site-header']}><a className={styles['site-name']} href="#main"><img src="/logo-otter.png" alt="" />獭獭说</a>
         <nav className={styles['header-actions']} aria-label="练习导航">
-          <button type="button" disabled={disabled} aria-pressed={page === 'practice'} onClick={() => onNavigate('practice')}>练习</button>
-          <button type="button" disabled={disabled} aria-pressed={page === 'history'} onClick={() => onNavigate('history')}>历史记录</button>
+          <button type="button" aria-pressed={page === 'practice'} onClick={() => onNavigate('practice')}>练习</button>
+          <button type="button" aria-pressed={page === 'history'} onClick={() => onNavigate('history')}>历史记录</button>
         </nav>
       </header>
       <main id="main" className={styles['main-content']}>
