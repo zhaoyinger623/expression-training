@@ -16,10 +16,16 @@ const dimensions = ['观点与论证', '结构与连贯', '表达清晰度', '�
 const evaluation = { summary: '反馈', nextStep: '举例', featuredQuote: null, dimensions, strengths: [], issues: [] };
 const config = { llm: { apiKey: 'test', baseUrl: 'https://example.invalid', model: 'test' } };
 
-test('仅保留两轮原文均可核对的变化，允许持平或退步', () => {
+test('两轮原文均可核对时展示变化，允许持平或退步', () => {
   for (const status of ['improved', 'unchanged', 'regressed']) {
     const change = { ...comparison.changes[0], status };
-    assert.deepEqual(parseComparison({ ...comparison, changes: [change, { ...change, firstQuote: '伪造原话' }] }, first, second), { ...comparison, changes: [change] });
+    assert.deepEqual(parseComparison({ ...comparison, changes: [change] }, first, second), { ...comparison, changes: [change] });
+  }
+});
+test('部分引用无效时一并省略摘要，避免保留失去依据的进步判断', () => {
+  const invalidChange = { ...comparison.changes[0], firstQuote: '伪造原话' };
+  for (const changes of [[comparison.changes[0], invalidChange], [invalidChange, comparison.changes[0]]]) {
+    assert.equal(parseComparison({ ...comparison, changes }, first, second), undefined);
   }
 });
 test('对比缺失、字段错误、引用错轮或无可靠变化时省略', () => {

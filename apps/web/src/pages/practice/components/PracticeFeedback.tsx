@@ -73,7 +73,7 @@ export function PracticeFeedback() {
           <h2 id="answer-comparison-title" tabIndex={-1} ref={selected === 1 ? feedbackTitle : undefined}>这次重答，有哪些变化</h2>
           <p className={styles['comparison-summary']}>{comparison.summary}</p>
           {comparison.changes.map((change, index) => <article className={styles['comparison-change']} key={index}>
-            <h3>{change.status === 'improved' ? '有进步' : change.status === 'regressed' ? '有所退步' : '仍未解决'} · {change.dimension}</h3>
+            <h3>{change.status === 'improved' ? '有进步' : change.status === 'regressed' ? '有所退步' : '未见明显变化'} · {change.dimension}</h3>
             <div className={styles['comparison-quotes']}>
               <div><span>首次回答</span><blockquote>“{change.firstQuote}”</blockquote></div>
               <div><span>第二次回答</span><blockquote>“{change.secondQuote}”</blockquote></div>
@@ -83,8 +83,10 @@ export function PracticeFeedback() {
           <div className={styles['comparison-action']}><h3>仍可改进</h3><p>{comparison.remainingIssue}</p><h3>下一次只练这一点</h3><p>{comparison.nextAction}</p></div>
         </section>}
 
-        <section className={styles['comparison-view']} aria-labelledby="comparison-title">
-          <h2 id="comparison-title">两次作答对比</h2>
+        {!comparison && <p>本次没有可核对的原话对比，可切换查看两轮回答与反馈。</p>}
+        <details className={`${styles['comparison-view']} ${styles['feedback-disclosure']}`}>
+          <summary>查看两次评分</summary>
+          <p>分数仅供参考；是否进步，需要结合两轮原话判断。</p>
           <table>
             <thead><tr><th scope="col">评估维度</th><th scope="col">首次</th><th scope="col">第二次</th><th scope="col">分数变化</th></tr></thead>
             <tbody>{results[0].evaluation.dimensions.map((dimension) => {
@@ -93,7 +95,7 @@ export function PracticeFeedback() {
               return <tr key={dimension.name}><th scope="row">{dimension.name}</th><td>{dimension.score}</td><td>{second.score}</td><td>{change > 0 ? `+${change}` : change === 0 ? '持平' : change}</td></tr>;
             })}</tbody>
           </table>
-        </section>
+        </details>
         <div className={styles['round-selector']} role="group" aria-label="查看作答结果">{results.map((item, index) => <button key={item.attempt.id} type="button" aria-pressed={selected === index} onClick={() => setSelected(index)}>{index === 0 ? '首次回答与反馈' : '第二次回答与反馈'}</button>)}</div>
       </>}
       <section className={styles['transcript-view']} aria-labelledby="transcript-title">

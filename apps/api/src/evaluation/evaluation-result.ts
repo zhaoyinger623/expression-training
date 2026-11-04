@@ -82,11 +82,11 @@ export function parseComparison(value: unknown, firstTranscript: string, secondT
     if (!isRecord(item) || !dimensionNames.includes(item.dimension as string) ||
       !['improved', 'unchanged', 'regressed'].includes(item.status as string) ||
       !isText(item.firstQuote) || !firstTranscript.includes(item.firstQuote) ||
-      !isText(item.secondQuote) || !secondTranscript.includes(item.secondQuote) || !isText(item.explanation)) continue;
+      !isText(item.secondQuote) || !secondTranscript.includes(item.secondQuote) || !isText(item.explanation)) return undefined;
     changes.push({ dimension: item.dimension as DimensionFeedback['name'], status: item.status as AnswerComparison['changes'][number]['status'],
       firstQuote: item.firstQuote, secondQuote: item.secondQuote, explanation: item.explanation });
   }
-  // 没有任何可靠原话依据时，不展示模型的整体对比判断。
+  // 任一变化失去依据时，整体摘要及建议也可能引用它，因此一并省略对比。
   if (!changes.length) return undefined;
   return { summary: value.summary, changes, remainingIssue: value.remainingIssue, nextAction: value.nextAction };
 }
