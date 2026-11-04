@@ -131,7 +131,7 @@ export function PracticeFeedback() {
           </Suspense>
         </div>
         </section>
-        <details className={styles['feedback-disclosure']} key={`dimensions-${result.attempt.id}`}>
+        <details open className={styles['feedback-disclosure']} key={`dimensions-${result.attempt.id}`}>
           <summary>查看六个维度的具体反馈</summary>
         <div className={styles['dimension-list']}>{result.evaluation.dimensions.map((item) => <article className={styles['dimension-row']} key={item.name}>
           <div className={styles['dimension-top']}><h3>{item.name}</h3><span>{item.score}<small> / 10</small></span></div>
