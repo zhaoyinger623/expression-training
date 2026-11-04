@@ -24,9 +24,7 @@ export function MindMap({ title, center, nodes, variant }: { title: string; cent
       spacingHorizontal: 90,
       spacingVertical: 14,
       paddingX: 14,
-      style: () => variant === 'user'
-        ? '.markmap-node circle { fill: #526579 } .markmap-link { stroke: #8293a3 }'
-        : '.markmap-node circle { fill: #8067a7 } .markmap-link { stroke: #aa9abd }',
+      color: () => variant === 'user' ? '#285f8f' : '#187568',
     }, root);
     return () => markmap.destroy();
   }, [markdown, variant]);

@@ -8,11 +8,14 @@
 }
 
 .mindmap-view h3 { margin: 0 0 12px; color: #343a40; font-size: 18px; }
-.mindmap-canvas { display: block; width: 100%; height: 340px; overflow: visible; font-family: inherit; }
+.mindmap-canvas {
+  display: block; width: 100%; height: 340px; overflow: visible; font-family: inherit;
+  font-weight: 500;
+}
 .mindmap-view :global(.markmap-node) { font-size: 14px; }
 .mindmap-view :global(.markmap-node > circle) { stroke: #fff; stroke-width: 2px; }
 .mindmap-view :global(.markmap-node > foreignObject) { overflow: visible; }
-.mindmap-view :global(.markmap-node > foreignObject div) { color: #555b62; line-height: 1.5; overflow-wrap: anywhere; }
+.mindmap-view :global(.markmap-node > foreignObject div) { color: #29333d; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
 .mindmap-view :global(.markmap-link) { stroke-width: 2px; }
 
 @media (max-width: 700px) {
