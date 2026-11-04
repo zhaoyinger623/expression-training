@@ -5,9 +5,12 @@
 .intro-line { margin: 0; color: var(--text-muted); font-size: 15px; }
 .next-topic { min-height: 44px; display: inline-flex; align-items: center; gap: 12px; padding: 0 4px; border: 0; background: transparent; color: var(--text); font-size: 15px; font-weight: 600; white-space: nowrap; }
 .next-topic:hover { text-decoration: underline; text-underline-offset: 5px; }
-.topic-title { margin: 24px 0 18px; max-width: 790px; font-size: clamp(32px, 4vw, 46px); line-height: 1.42; letter-spacing: -.04em; font-weight: 600; }
+.topic-title { margin: 24px 0 18px; max-width: 1000px; font-size: clamp(32px, 4vw, 46px); line-height: 1.42; letter-spacing: -.04em; font-weight: 600; }
 .topic-view-compact .topic-title { margin: 14px 0 12px; font-size: clamp(28px, 3.2vw, 36px); line-height: 1.45; }
-.topic-description { max-width: 700px; margin: 0; color: #555; line-height: 1.75; font-size: 16px; }
+.topic-description { max-width: 900px; margin: 0; color: #555; line-height: 1.75; font-size: 16px; }
+.topic-loading { margin-top: 16px; }
+.topic-loading p { margin: 0; }
+.practice-slogan { padding-top: 8px; color: var(--text-muted); font-size: 14px; letter-spacing: .04em; }
 .answer-view { min-height: 320px; padding: 28px 0 42px; border-top: 1px solid var(--border); text-align: center; }
 .answer-heading h2 { margin: 0 0 14px; font-size: 23px; line-height: 1.4; font-weight: 600; }
 .answer-heading p { margin: 0; color: var(--text-muted); font-size: 15px; line-height: 1.75; }
@@ -60,6 +63,16 @@
 .overall-score-value span { color: var(--text-muted); font-size: 14px; }
 .score-track { grid-column: 1 / -1; height: 4px; border-radius: 4px; background: var(--mic-surface); overflow: hidden; }
 .score-track i { display: block; height: 100%; background: var(--brand); }
+.score-radar { display: grid; grid-template-columns: minmax(170px, .7fr) minmax(0, 1.3fr); align-items: center; gap: 18px; margin: 28px 0 36px; padding: 28px 32px; border: 1px solid var(--border); border-radius: 16px; background: #fff; }
+.score-radar-heading h3 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
+.score-radar-heading p { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 1.7; }
+.score-radar-chart { display: block; width: min(100%, 420px); justify-self: center; overflow: visible; }
+.radar-grid { fill: none; stroke: var(--border); stroke-width: 1; }
+.radar-axis { stroke: var(--border); stroke-width: 1; }
+.radar-label { fill: var(--text); font-size: 11px; }
+.radar-value { fill: var(--text-muted); font-size: 10px; }
+.radar-score-area { fill: rgba(105, 124, 147, .2); stroke: #697c93; stroke-width: 2; stroke-linejoin: round; }
+.radar-score-point { fill: #fff; stroke: #697c93; stroke-width: 2; }
 .stream-progress { margin-top: 24px; padding: 16px 18px; border-radius: 12px; background: var(--mic-surface); text-align: left; }
 .stream-progress p { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 1.75; }
 .stream-progress .stream-transcript { margin-top: 8px; color: var(--text); white-space: pre-wrap; }
@@ -120,6 +133,9 @@
   .overall-score { gap: 16px; padding: 23px 22px 20px; }
   .overall-score-copy p { max-width: 220px; }
   .overall-score-value strong { font-size: 36px; }
+  .score-radar { grid-template-columns: 1fr; gap: 4px; padding: 22px 12px 14px; }
+  .score-radar-heading { padding-inline: 10px; }
+  .score-radar-chart { width: min(100%, 360px); }
   .feedback-quote, .feedback-next { min-height: 0; padding: 26px; }
   .feedback-next .button { margin-top: 28px; }
 }

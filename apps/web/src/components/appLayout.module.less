@@ -1,7 +1,8 @@
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
 .site-header, .site-footer { width: min(100% - 64px, 1200px); margin-inline: auto; display: flex; align-items: center; justify-content: space-between; }
 .site-header { min-height: 88px; }
-.site-name { color: var(--text); font-size: 23px; font-weight: 700; text-decoration: none; }
+.site-name { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-size: 23px; font-weight: 700; text-decoration: none; }
+.site-name img { width: 40px; height: 40px; object-fit: contain; }
 .main-content { width: min(100% - 64px, var(--content-width)); margin: 0 auto; flex: 1; }
 .site-footer { min-height: 90px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 13px; }
 @media (max-width: 700px) {

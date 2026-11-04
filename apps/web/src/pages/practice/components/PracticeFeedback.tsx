@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { usePracticeStore } from '../../../stores/practiceStore';
-import { MindMap } from './MindMap';
+const MindMap = lazy(() => import('./MindMap').then((module) => ({ default: module.MindMap })));
 import styles from '../practice.module.less';
 import common from '../../../components/common.module.less';
 
@@ -8,6 +8,52 @@ function renderHighlightedLine(line: string) {
   return line.split(/(==[^=]+==)/g).map((part, index) => part.startsWith('==') && part.endsWith('==')
     ? <mark key={index}>{part.slice(2, -2)}</mark>
     : part);
+}
+
+function ScoreRadar({ dimensions }: { dimensions: { name: string; score: number }[] }) {
+  const center = 180;
+  const radius = 112;
+  const labelRadius = 158;
+  const pointAt = (index: number, value: number) => {
+    const angle = (Math.PI * 2 * index) / dimensions.length - Math.PI / 2;
+    return `${center + Math.cos(angle) * radius * value / 10},${center + Math.sin(angle) * radius * value / 10}`;
+  };
+  const labelAt = (index: number) => {
+    const angle = (Math.PI * 2 * index) / dimensions.length - Math.PI / 2;
+    return { x: center + Math.cos(angle) * labelRadius, y: center + Math.sin(angle) * labelRadius };
+  };
+  const points = dimensions.map((item, index) => pointAt(index, item.score)).join(' ');
+
+  return <section className={styles['score-radar']} aria-labelledby="score-radar-title">
+    <div className={styles['score-radar-heading']}><h3 id="score-radar-title">六维评分</h3><p>看看这次表达各方面的表现</p></div>
+    <svg className={styles['score-radar-chart']} viewBox="0 0 360 360" role="img" aria-labelledby="score-radar-title score-radar-description">
+      <desc id="score-radar-description">{dimensions.map((item) => `${item.name}：${item.score}分`).join('；')}</desc>
+      {Array.from({ length: 5 }, (_, ring) => {
+        const value = (ring + 1) * 2;
+        const ringPoints = dimensions.map((_, index) => pointAt(index, value)).join(' ');
+        return <polygon key={value} points={ringPoints} className={styles['radar-grid']} />;
+      })}
+      {dimensions.map((item, index) => {
+        const angle = (Math.PI * 2 * index) / dimensions.length - Math.PI / 2;
+        const endX = center + Math.cos(angle) * radius;
+        const endY = center + Math.sin(angle) * radius;
+        const label = labelAt(index);
+        const anchor = label.x < center - 12 ? 'end' : label.x > center + 12 ? 'start' : 'middle';
+        return <g key={item.name}>
+          <line x1={center} y1={center} x2={endX} y2={endY} className={styles['radar-axis']} />
+          <text x={label.x} y={label.y} textAnchor={anchor} className={styles['radar-label']}>
+            <tspan x={label.x} dy="-0.35em">{item.name}</tspan>
+            <tspan x={label.x} dy="1.4em" className={styles['radar-value']}>{item.score} / 10</tspan>
+          </text>
+        </g>;
+      })}
+      <polygon points={points} className={styles['radar-score-area']} />
+      {dimensions.map((item, index) => {
+        const [cx, cy] = pointAt(index, item.score).split(',');
+        return <circle key={item.name} cx={cx} cy={cy} r="4" className={styles['radar-score-point']} />;
+      })}
+    </svg>
+  </section>;
 }
 
 export function PracticeFeedback() {
@@ -75,13 +121,16 @@ export function PracticeFeedback() {
           <div className={styles['overall-score-value']}><strong>{result.evaluation.overallScore}</strong><span>/ 10</span></div>
           <div className={styles['score-track']} aria-hidden="true"><i style={{ width: `${result.evaluation.overallScore * 10}%` }} /></div>
         </section>
-        <details className={styles['feedback-disclosure']} key={`maps-${result.attempt.id}`}>
-          <summary>看看回答思路</summary>
+        <ScoreRadar dimensions={result.evaluation.dimensions} />
+        <section className={`${styles['feedback-disclosure']} ${styles['mindmap-disclosure']}`} aria-labelledby="mindmap-title">
+          <h3 className={styles['mindmap-disclosure-title']} id="mindmap-title">看看回答思路</h3>
         <div className={styles['mindmap-grid']}>
-          <MindMap title="你的回答与待改进点" center={topic?.title ?? '你的回答'} nodes={result.evaluation.userMindMap} variant="user" />
-          <MindMap title="参考回答思路" center="清晰表达的结构" nodes={result.evaluation.referenceMindMap} variant="reference" />
+          <Suspense fallback={<p>正在整理思路…</p>}>
+            <MindMap title="你的回答与待改进点" center={topic?.title ?? '你的回答'} nodes={result.evaluation.userMindMap} variant="user" />
+            <MindMap title="参考回答思路" center="清晰表达的结构" nodes={result.evaluation.referenceMindMap} variant="reference" />
+          </Suspense>
         </div>
-        </details>
+        </section>
         <details className={styles['feedback-disclosure']} key={`dimensions-${result.attempt.id}`}>
           <summary>查看六个维度的具体反馈</summary>
         <div className={styles['dimension-list']}>{result.evaluation.dimensions.map((item) => <article className={styles['dimension-row']} key={item.name}>

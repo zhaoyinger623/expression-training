@@ -18,7 +18,7 @@ export default function PracticePage() {
       </div>
       <h1 id="topic-title" className={styles['topic-title']}>{topic?.title ?? (loadingTopic ? '正在准备论题…' : '论题暂时无法获取')}</h1>
       {topic && <p className={styles['topic-description']}>{topic.description}</p>}
-      {loadingTopic && <p className={common['status-text']} role="status">正在获取新的论题，请稍候。</p>}
+      {loadingTopic && <div className={styles['topic-loading']}><p className={common['status-text']} role="status">正在获取新的论题，请稍候。</p><p className={styles['practice-slogan']}>自信表达自己，让每一次发言掷地有声</p></div>}
     </section>
 
     {(error || recorder.error) && <div className={common['error-notice']} role="alert">
@@ -35,7 +35,7 @@ export default function PracticePage() {
         <div className={styles['companion-scene']} aria-hidden="true">
           <picture>
             <source media="(prefers-reduced-motion: reduce)" srcSet="/companion-still.png" />
-            <img className={styles['recording-companion']} src={recording ? '/recording-companion.gif' : '/companion-still.png'} alt="" width="112" height="112" />
+            <img className={styles['recording-companion']} src={recording ? '/recording-companion.gif' : submitting ? '/transcribing-companion.gif' : '/companion-still.png'} alt="" width="112" height="112" />
           </picture>
         </div>
         <p className={styles['companion-message']}>{recording ? '慢慢说，停顿一下也没关系。' : submitting ? '正在整理你的回答，稍等一会儿。' : recorder.phase === 'recorded' ? '说完了，可以先听听自己的声音。' : '慢慢想，准备好了就开始。'}</p>

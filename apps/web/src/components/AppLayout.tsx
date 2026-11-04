@@ -9,7 +9,7 @@ export function AppLayout({ children, page, disabled, onNavigate }: {
 }) {
   return (
     <div className={styles['app-shell']}>
-      <header className={styles['site-header']}><a className={styles['site-name']} href="#main">獭獭说</a>
+      <header className={styles['site-header']}><a className={styles['site-name']} href="#main"><img src="/logo-otter.png" alt="" />獭獭说</a>
         <nav className={styles['header-actions']} aria-label="练习导航">
           <button type="button" disabled={disabled} aria-pressed={page === 'practice'} onClick={() => onNavigate('practice')}>练习</button>
           <button type="button" disabled={disabled} aria-pressed={page === 'history'} onClick={() => onNavigate('history')}>历史记录</button>
