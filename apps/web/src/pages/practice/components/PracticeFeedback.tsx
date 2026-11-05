@@ -476,54 +476,52 @@ export function PracticeFeedback() {
         >
           <summary>读一份参考回答</summary>
           <section className={styles["reference-answer"]}>
-            <h3>参考文字答案</h3>
-            <div className={styles["reference-answer-body"]}>
-              {result.evaluation.referenceAnswer
-                .split("\n")
-                .map((line, index) => (
-                  <p key={index}>{renderHighlightedLine(line)}</p>
-                ))}
-            </div>
+            {result.evaluation.expressionMethod?.recommendedStyle ? (
+              <>
+                <h3>参考回答 · {result.evaluation.expressionMethod.recommendedStyle}</h3>
+                <p className={styles["expression-method-name"]}>{result.evaluation.expressionMethod.structure}</p>
+                <p className={styles["expression-method-suitable"]}>{result.evaluation.expressionMethod.rationale} {result.evaluation.expressionMethod.suitableFor}</p>
+                {result.evaluation.expressionMethod.styleExamples.length > 0 && (() => {
+                  const examples = result.evaluation.expressionMethod.styleExamples;
+                  const recommendedIndex = examples.findIndex((example) => example.name === result.evaluation.expressionMethod.recommendedStyle);
+                  const activeIndex = selectedStyle !== null && examples[selectedStyle] ? selectedStyle : Math.max(recommendedIndex, 0);
+                  return <>
+                    <div className={styles["style-examples"]}>
+                      <h4>同一观点，不同表达风格</h4>
+                      <div className={styles["style-tabs"]} role="tablist" aria-label="表达风格示范">
+                        {examples.map((example, index) => (
+                          <button key={example.name} type="button" role="tab" aria-selected={activeIndex === index} onClick={() => setSelectedStyle(index)}>
+                            <span className={`${styles["otter-avatar"]} ${styles[["otter-analyst", "otter-storyteller", "otter-workplace", "otter-host"][index]]}`} aria-hidden="true" />
+                            {example.name}{example.name === result.evaluation.expressionMethod.recommendedStyle ? " · 推荐" : ""}
+                          </button>
+                        ))}
+                      </div>
+                      <div className={`${styles["style-sample"]} ${styles["reference-answer-body"]}`} role="tabpanel">
+                        {examples[activeIndex].sample.split("\n").map((line, index) => <p key={index}>{renderHighlightedLine(line)}</p>)}
+                      </div>
+                    </div>
+                    <div className={styles["method-breakdown"]}>
+                      <h4>这套表达方法</h4>
+                      <ol>{result.evaluation.expressionMethod.steps.map((step, index) => <li key={index}>{step}</li>)}</ol>
+                      {result.evaluation.expressionMethod.sentenceStarters.length > 0 && (
+                        <div className={styles["sentence-starters"]}>
+                          <h4>可以借用的句式开头</h4>
+                          {result.evaluation.expressionMethod.sentenceStarters.map((starter, index) => <p key={index}>“{starter}”</p>)}
+                        </div>
+                      )}
+                    </div>
+                  </>;
+                })()}
+              </>
+            ) : (
+              <>
+                <h3>参考文字答案</h3>
+                <div className={styles["reference-answer-body"]}>
+                  {result.evaluation.referenceAnswer.split("\n").map((line, index) => <p key={index}>{renderHighlightedLine(line)}</p>)}
+                </div>
+              </>
+            )}
           </section>
-          {result.evaluation.expressionMethod?.recommendedStyle && (
-            <section className={`${styles["reference-answer"]} ${styles["expression-method"]}`}>
-              <h3>换一种方式表达</h3>
-              <p className={styles["expression-method-name"]}>推荐风格：{result.evaluation.expressionMethod.recommendedStyle} · 结构：{result.evaluation.expressionMethod.structure}</p>
-              <p className={styles["expression-method-suitable"]}>{result.evaluation.expressionMethod.rationale} {result.evaluation.expressionMethod.suitableFor}</p>
-              <ol>
-                {result.evaluation.expressionMethod.steps.map((step, index) => <li key={index}>{step}</li>)}
-              </ol>
-              {result.evaluation.expressionMethod.sentenceStarters.length > 0 && (
-                <div className={styles["sentence-starters"]}>
-                  <h4>可以借用的句式开头</h4>
-                  {result.evaluation.expressionMethod.sentenceStarters.map((starter, index) => <p key={index}>“{starter}”</p>)}
-                </div>
-              )}
-              {result.evaluation.expressionMethod.styleExamples.length > 0 && (
-                <div className={styles["style-examples"]}>
-                  <h4>同一观点，不同表达风格</h4>
-                  {(() => {
-                    const examples = result.evaluation.expressionMethod.styleExamples;
-                    const recommendedIndex = examples.findIndex((example) => example.name === result.evaluation.expressionMethod.recommendedStyle);
-                    const activeIndex = selectedStyle !== null && examples[selectedStyle] ? selectedStyle : Math.max(recommendedIndex, 0);
-                    return <>
-                  <div className={styles["style-tabs"]} role="tablist" aria-label="表达风格示范">
-                    {result.evaluation.expressionMethod.styleExamples.map((example, index) => (
-                      <button key={example.name} type="button" role="tab" aria-selected={activeIndex === index} onClick={() => setSelectedStyle(index)}>
-                        <span className={`${styles["otter-avatar"]} ${styles[["otter-analyst", "otter-storyteller", "otter-workplace", "otter-host"][index]]}`} aria-hidden="true" />
-                        {example.name}{example.name === result.evaluation.expressionMethod.recommendedStyle ? " · 推荐" : ""}
-                      </button>
-                    ))}
-                  </div>
-                  <div className={`${styles["style-sample"]} ${styles["reference-answer-body"]}`} role="tabpanel">
-                    {examples[activeIndex].sample.split("\n").map((line, index) => <p key={index}>{renderHighlightedLine(line)}</p>)}
-                  </div>
-                    </>;
-                  })()}
-                </div>
-              )}
-            </section>
-          )}
         </details>
       </section>
     </div>
