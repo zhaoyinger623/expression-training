@@ -3,6 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { ApiErrorCode, RealtimeTranscriptionEvent } from '@expression/shared';
 import type { ApiConfig } from '../config.js';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('RealtimeTranscription');
 
 /** 每个连接独立转发，不在进程内保存跨请求会话，适用于本地与 Vercel Functions。 */
 export function attachRealtimeTranscription(server: Server, config: ApiConfig) {
@@ -42,16 +45,30 @@ function connectRealtimeSession(client: WebSocket, config: ApiConfig) {
   let finishing = false;
   let closed = false;
   let audioBytes = 0;
+  const startedAt = performance.now();
+  let readyMs: number | undefined;
+  let firstAudioAt: number | undefined;
+  let firstTextAt: number | undefined;
+  let finishAt: number | undefined;
+  let succeeded = false;
   const items = new Map<string, { text: string; final: boolean }>();
   const transcript = () => [...items.values()].map(item => item.text).join('');
   const emit = (event: object) => upstream.send(JSON.stringify({ event_id: randomUUID(), ...event }));
   let finishTimer: ReturnType<typeof setTimeout> | undefined;
   const cleanup = () => {
+    if (closed) return;
     closed = true;
     clearTimeout(readyTimer);
     clearTimeout(sessionTimer);
     clearTimeout(finishTimer);
     upstream.close();
+    logger.log(JSON.stringify({
+      event: 'realtime_asr_timing', region: process.env.VERCEL_REGION ?? 'local',
+      upstreamHost: url.hostname, model: config.realtimeAsr.model, audioBytes, readyMs,
+      firstTextAfterAudioMs: firstTextAt !== undefined && firstAudioAt !== undefined ? Math.round(firstTextAt - firstAudioAt) : undefined,
+      finishMs: finishAt !== undefined ? Math.round(performance.now() - finishAt) : undefined,
+      totalMs: Math.round(performance.now() - startedAt), succeeded,
+    }));
   };
   const fail = (message: string, code: ApiErrorCode = 'TRANSCRIPTION_FAILED') => {
     if (closed) return;
@@ -77,16 +94,19 @@ function connectRealtimeSession(client: WebSocket, config: ApiConfig) {
       if (event.type === 'session.updated') {
         clearTimeout(readyTimer);
         ready = true;
+        readyMs = Math.round(performance.now() - startedAt);
         send({ type: 'ready' });
       } else if (event.type === 'input_audio_buffer.committed' && event.item_id) {
         if (!items.has(event.item_id)) items.set(event.item_id, { text: '', final: false });
       } else if (event.type === 'conversation.item.input_audio_transcription.text' && event.item_id) {
         if (!items.get(event.item_id)?.final) {
           items.set(event.item_id, { text: `${event.text ?? ''}${event.stash ?? ''}`, final: false });
+          if (firstTextAt === undefined && (event.text || event.stash)) firstTextAt = performance.now();
           send({ type: 'transcript', transcript: transcript() });
         }
       } else if (event.type === 'conversation.item.input_audio_transcription.completed' && event.item_id && typeof event.transcript === 'string') {
         items.set(event.item_id, { text: event.transcript, final: true });
+        if (firstTextAt === undefined && event.transcript) firstTextAt = performance.now();
         send({ type: 'transcript', transcript: transcript() });
       } else if (event.type === 'session.finished') {
         if (!finishing || [...items.values()].some(item => !item.final)) {
@@ -96,6 +116,7 @@ function connectRealtimeSession(client: WebSocket, config: ApiConfig) {
         const text = transcript().trim();
         if (!text) { fail('未识别出语音，请检查录音后重试', 'EMPTY_TRANSCRIPT'); return; }
         send({ type: 'complete', transcript: text });
+        succeeded = true;
         cleanup();
         client.close();
       } else if (event.type === 'error' || event.type === 'conversation.item.input_audio_transcription.failed') {
@@ -111,6 +132,7 @@ function connectRealtimeSession(client: WebSocket, config: ApiConfig) {
     if (binary) {
       const audio = Buffer.concat(Array.isArray(data) ? data : [Buffer.from(data as ArrayBuffer)]);
       audioBytes += audio.length;
+      firstAudioAt ??= performance.now();
       if (!audio.length || audio.length % 2 || audioBytes > 180 * 16000 * 2) {
         fail('实时音频须为不超过 180 秒的 PCM16 数据', 'INVALID_REQUEST');
         return;
@@ -122,6 +144,7 @@ function connectRealtimeSession(client: WebSocket, config: ApiConfig) {
         const event = JSON.parse(data.toString());
         if (event.type !== 'finish') { fail('未知实时录音指令', 'INVALID_REQUEST'); return; }
         finishing = true;
+        finishAt = performance.now();
         emit({ type: 'session.finish' });
         finishTimer = setTimeout(() => fail('等待实时转写收尾超时，提交后可使用完整录音转写', 'UPSTREAM_TIMEOUT'), 20_000);
       } catch {

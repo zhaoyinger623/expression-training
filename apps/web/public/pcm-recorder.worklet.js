@@ -1,8 +1,8 @@
-/* 将设备采样率转换为 16 kHz PCM16，每 100 ms 发送一帧；stop 时先发送尾帧再确认。 */
+/* 将设备采样率转换为 16 kHz PCM16，每 20 ms 发送一帧；stop 时先发送尾帧再确认。 */
 class PcmRecorder extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.frame = new ArrayBuffer(3200);
+    this.frame = new ArrayBuffer(640);
     this.view = new DataView(this.frame);
     this.offset = 0;
     this.sum = 0;

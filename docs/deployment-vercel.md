@@ -147,3 +147,11 @@ IndexedDB 保存失败时，页面会保留反馈并提供“重试保存”，�
 - 前端仍只配置 `VITE_API_BASE_URL`。WebSocket 使用精确 `WEB_ORIGIN` 校验；平台 Deployment Protection 或代理须允许该路径 Upgrade。来源校验沿用单用户部署范围，不是账户认证。
 - 开始录音即上传音频并调用识别；失败后本地录音保留，用户点击提交时才回退整段转写，可能额外产生文件识别费用。正常实时完成不会重复调用文件转写。
 - 云端验收需确认 Network 中出现 `101 Switching Protocols`、说话时文字更新、结束后尾句完整、提交仅调用评估接口；现有本地模拟通过不代表云端已验证。
+
+### 实时文字延迟排查（2026-11-05）
+
+`apps/api/vercel.json` 使用 `regions: ["hkg1"]`，下次部署将请求香港执行地域，靠近当前默认北京 ASR。此配置影响整个后端，包括评估模型调用；若改用其他地域的 ASR 或 LLM，应重新衡量两者链路。[Vercel 地域配置](https://vercel.com/docs/functions/configuring-functions/region)
+
+实时音频每 20ms 发送一帧；VAD 保留官方推荐的 400ms，不以缩短断句等待冒充首段文字提速。客户端已即时展示 `text + stash` 草稿，无需等待整句确认。
+
+会话关闭时输出一条 `realtime_asr_timing` 日志：`readyMs` 为上游连接和配置确认耗时，`firstTextAfterAudioMs` 为首个 PCM 帧到上游首段非空文字的时间（包含开口前静音、音频持续输入、上游网络与模型处理，不是纯模型推理耗时），`finishMs` 为结束指令到收尾的时间，另含地域、上游主机、模型、字节数和成功标记。日志不包含音频、文本或密钥。模型确认句子与录音结束确认依然可能晚于草稿显示。

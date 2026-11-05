@@ -1,5 +1,5 @@
 export async function startPcmCapture(input: MediaStream, onFrame: (audio: ArrayBuffer) => void) {
-  const context = new AudioContext();
+  const context = new AudioContext({ latencyHint: 'interactive' });
   let node: AudioWorkletNode | undefined;
   let source: MediaStreamAudioSourceNode | undefined;
   let closed = false;

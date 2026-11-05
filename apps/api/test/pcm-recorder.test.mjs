@@ -15,6 +15,19 @@ function capture(sampleRate) {
   return { processor: new Processor(), frames };
 }
 
+test('20ms 即发送首帧，剩余音频在停止时发送，避免等待 100ms', () => {
+  const { processor, frames } = capture(16000);
+  processor.process([[new Float32Array(319).fill(0.5)]]);
+  assert.equal(frames.length, 0);
+  processor.process([[new Float32Array(1).fill(0.5)]]);
+  assert.equal(frames.length, 1);
+  assert.equal(frames[0].byteLength, 640);
+  processor.process([[new Float32Array(160).fill(0.5)]]);
+  processor.port.onmessage({ data: 'stop' });
+  assert.equal(frames[1].byteLength, 320);
+  assert.equal(frames[2], 'stopped');
+});
+
 test('48kHz 跨 128 样本块降采样为 16kHz，停止先送尾帧再确认', () => {
   const { processor, frames } = capture(48000);
   const input = Float32Array.from({ length: 48000 }, (_, i) => Math.sin(i * Math.PI / 24));
