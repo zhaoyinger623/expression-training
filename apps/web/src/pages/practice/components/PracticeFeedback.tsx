@@ -515,7 +515,9 @@ export function PracticeFeedback() {
                       </button>
                     ))}
                   </div>
-                  <p className={styles["style-sample"]} role="tabpanel">{examples[activeIndex].sample}</p>
+                  <div className={`${styles["style-sample"]} ${styles["reference-answer-body"]}`} role="tabpanel">
+                    {examples[activeIndex].sample.split("\n").map((line, index) => <p key={index}>{renderHighlightedLine(line)}</p>)}
+                  </div>
                     </>;
                   })()}
                 </div>

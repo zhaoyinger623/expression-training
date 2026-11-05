@@ -21,8 +21,8 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
   if (!isRecord(value.expressionMethod) || !isText(value.expressionMethod.recommendedStyle) || !isText(value.expressionMethod.structure) || !isText(value.expressionMethod.rationale) || !isText(value.expressionMethod.suitableFor) ||
     !Array.isArray(value.expressionMethod.steps) || value.expressionMethod.steps.length < 2 || value.expressionMethod.steps.length > 5 || !value.expressionMethod.steps.every(isText) ||
     !Array.isArray(value.expressionMethod.sentenceStarters) || value.expressionMethod.sentenceStarters.length < 1 || value.expressionMethod.sentenceStarters.length > 4 || !value.expressionMethod.sentenceStarters.every(isText) ||
-    !Array.isArray(value.expressionMethod.styleExamples) || value.expressionMethod.styleExamples.length < 2 || value.expressionMethod.styleExamples.length > 4 ||
-    !value.expressionMethod.styleExamples.every((item) => isRecord(item) && isText(item.name) && isText(item.sample))) {
+    !Array.isArray(value.expressionMethod.styleExamples) || value.expressionMethod.styleExamples.length !== 4 ||
+    !value.expressionMethod.styleExamples.every((item, index) => isRecord(item) && item.name === ['严谨分析型', '故事共情型', '干练职场型', '轻松幽默型'][index] && isText(item.sample) && (item.sample.match(/[\u3400-\u9fff]/g)?.length ?? 0) >= 400)) {
     throw new Error('通用表达方法无效');
   }
   const parseMindMap = (items: unknown[], depth = 0): MindMapNode[] => {

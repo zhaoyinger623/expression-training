@@ -80,7 +80,7 @@
 ## 评估结果
 
 - dimensions 固定六个维度：观点与论证、结构与连贯、表达清晰度、论题回应度、具体性与例证、权衡与边界；每个维度恰好一次，score 为 0–10 整数，并包含分别描述优点与待改进点的 strength、weakness。
-- overallScore 按六项维度均分由服务端计算；userMindMap 和 referenceMindMap 为最多 4 层、每层最多 8 个节点的树；referenceAnswer 至少 500 个汉字，使用分点换行组织，并用 `==文字==` 标记少量核心论点供页面高亮。expressionMethod 区分推荐表达风格与表达结构，包含选择理由、适用场景、步骤、句式及同一观点的风格示范，旧历史缺失时不展示该模块。
+- overallScore 按六项维度均分由服务端计算；userMindMap 和 referenceMindMap 为最多 4 层、每层最多 8 个节点的树；referenceAnswer 至少 500 个汉字，使用分点换行组织，并用 `==文字==` 标记少量核心论点供页面高亮。expressionMethod 区分推荐表达风格与表达结构，包含选择理由、适用场景、步骤、句式及四篇约 500 字的同观点风格示范，重点句同样使用 `==文字==` 标记。
 - evidenceQuotes 为可选逐句点评列表，最多 6 项；kind 为 strength 或 improvement，text 必须是 transcript 中的连续原文，feedback 为对应点评。未返回该字段的旧历史按空列表展示。
 - 每个维度提供 strength 和 weakness，分别说明优点与待改进点；strengths、issues 为简短字符串列表，nextStep 给出最重要的一条练习建议。
 - summary 对应页面反馈标题；featuredQuote 对应引用原文与建议，引用必须来自 transcript，找不到合适引用时为 null。
