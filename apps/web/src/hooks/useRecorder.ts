@@ -59,7 +59,7 @@ export function useRecorder() {
         let session: RealtimeSession | undefined;
         let connectionFailed = false;
         try {
-          session = await connectRealtimeTranscription(setTranscript, (message) => {
+          session = connectRealtimeTranscription(setTranscript, (message) => {
             connectionFailed = true;
             setRealtimeStatus('failed');
             setRealtimeError(message);
@@ -70,8 +70,11 @@ export function useRecorder() {
             session.cancel();
             capture.cancel();
           } else {
-            realtime.current = { session, capture };
-            setRealtimeStatus('listening');
+            const active = { session, capture };
+            realtime.current = active;
+            void session.ready.then(() => {
+              if (realtime.current === active && recorder.current?.state === 'recording') setRealtimeStatus('listening');
+            }).catch(() => {});
           }
         } catch (cause) {
           session?.cancel();

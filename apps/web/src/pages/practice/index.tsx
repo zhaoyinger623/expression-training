@@ -66,7 +66,8 @@ export default function PracticePage() {
           <p className={common['status-text']} role="status">{recorder.realtimeStatus === 'failed'
             ? `${recorder.realtimeError}。录音会保留，提交时将使用完整录音重新转写。`
             : recorder.realtimeStatus === 'finalizing' ? '录音已结束，正在确认最后一段文字…'
-              : recorder.realtimeStatus === 'complete' ? '转写已完成，可回听后提交。' : '边说边转写，文字会实时更新。'}</p>
+              : recorder.realtimeStatus === 'complete' ? '转写已完成，可回听后提交。'
+                : recorder.realtimeStatus === 'connecting' ? (requesting ? '正在准备录音并连接实时转写…' : '正在连接实时转写，录音已开始，连接后会补传开头的语音。') : '边说边转写，文字会实时更新。'}</p>
           {recorder.transcript && <p className={styles['stream-transcript']} aria-label="实时转写文本">{recorder.transcript}</p>}
         </div>}
         {results.length === 1 && !recording && !requesting && !submitting && <button className={common['text-button']} type="button" onClick={() => { recorder.reset(); setError(''); setShowAnswer(false); }}>返回首次反馈</button>}

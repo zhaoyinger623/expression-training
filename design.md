@@ -23,7 +23,7 @@ P0：AI 生成论题（失败时使用预置题库）、用户主动换题、录
 
 ### 录音模式
 
-前端通过 `apps/web/src/config/recording.ts` 的 `recordingMode` 在 `realtime`（默认）与 `upload` 间切换。实时模式由 AudioWorklet 将设备音频混合、降采样为 16kHz PCM16 单声道，每 20ms 经后端 WebSocket 转发到 Qwen3-ASR-Flash-Realtime；本地同时录制压缩音频供回听。服务端按句维护草稿与确认文本，结束时等待 `session.finished` 并核对所有句子已确认，再允许直接提交评估。实时失败时保留录音，提交时使用原文件转写接口；不评估不完整草稿，不自动重连。统一上传模式保留原链路。实时录音开始即调用 ASR，页面在开始前说明音频实时上传。
+前端通过 `apps/web/src/config/recording.ts` 的 `recordingMode` 在 `realtime`（默认）与 `upload` 间切换。实时模式由 AudioWorklet 将设备音频混合、降采样为 16kHz PCM16 单声道，每 20ms 经后端 WebSocket 转发到 Qwen3-ASR-Flash-Realtime；本地同时录制压缩音频供回听。录音启动不等待实时服务握手，连接前的 PCM 帧在前端内存暂存（上限 1MiB，连接等待上限 18 秒），ready 后按序补传；结束指令始终排在全部音频之后。服务端按句维护草稿与确认文本，结束时等待 `session.finished` 并核对所有句子已确认，再允许直接提交评估。实时失败时保留录音，提交时使用原文件转写接口；不评估不完整草稿，不自动重连。统一上传模式保留原链路。实时录音开始即调用 ASR，页面在开始前说明音频实时上传。
 
 WebSocket 路径为 `/api/transcriptions/realtime`，客户端只发送 PCM 二进制帧和 `finish` 指令；模型、地址、Key 由后端决定。精确检查浏览器 Origin、单帧大小、PCM 字节对齐、180 秒总音频量及会话时限，断开时释放上游连接；密钥只留后端。Vercel 沿用 Node.js HTTP Upgrade，启用 Fluid Compute，函数时限至少 240 秒、建议 300 秒。
 
