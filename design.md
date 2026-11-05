@@ -67,9 +67,9 @@ flowchart LR
 | --- | --- | --- |
 | Topic | id, title, description, source, createdAt | 论题；source 为 AI 或预置题库 |
 | Attempt | id, topicId, round, transcript, durationSeconds, createdAt | 一次作答；round 为 1 或 2 |
-| Evaluation | attemptId, overallScore, summary, evidenceQuotes, dimensions, strengths, issues, nextStep | 一次作答的反馈；总分为六维均分 |
+| Evaluation | attemptId, overallScore, summary, evidenceQuotes, dimensions, expressionMethod, strengths, issues, nextStep | 一次作答的反馈；含推荐表达风格、结构及同观点风格示范，总分为六维均分 |
 | Practice | id, topic, results, createdAt, updatedAt | 一次练习，关联一至两轮作答和反馈 |
-| DimensionFeedback | name, score, reason, suggestion | 单维度评分及具体依据 |
+| DimensionFeedback | name, score, strength, weakness | 单维度评分及有文本依据的优点、待改进点 |
 
 维度固定为“观点与论证”“结构与连贯”“表达清晰度”“论题回应度”“具体性与例证”“权衡与边界”。评分对短、泛、缺少例证或漏题回答从严；反馈应尽可能引用回答中的具体内容，不只给笼统分数。
 

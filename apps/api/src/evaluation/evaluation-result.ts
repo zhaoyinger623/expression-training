@@ -18,6 +18,13 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
   if ((value.userMindMap !== undefined && !Array.isArray(value.userMindMap)) ||
     (value.referenceMindMap !== undefined && !Array.isArray(value.referenceMindMap)) ||
     (value.referenceAnswer !== undefined && (!isText(value.referenceAnswer) || (value.referenceAnswer.match(/[\u3400-\u9fff]/g)?.length ?? 0) < 500))) throw new Error('思维导图或参考答案无效');
+  if (!isRecord(value.expressionMethod) || !isText(value.expressionMethod.recommendedStyle) || !isText(value.expressionMethod.structure) || !isText(value.expressionMethod.rationale) || !isText(value.expressionMethod.suitableFor) ||
+    !Array.isArray(value.expressionMethod.steps) || value.expressionMethod.steps.length < 2 || value.expressionMethod.steps.length > 5 || !value.expressionMethod.steps.every(isText) ||
+    !Array.isArray(value.expressionMethod.sentenceStarters) || value.expressionMethod.sentenceStarters.length < 1 || value.expressionMethod.sentenceStarters.length > 4 || !value.expressionMethod.sentenceStarters.every(isText) ||
+    !Array.isArray(value.expressionMethod.styleExamples) || value.expressionMethod.styleExamples.length < 2 || value.expressionMethod.styleExamples.length > 4 ||
+    !value.expressionMethod.styleExamples.every((item) => isRecord(item) && isText(item.name) && isText(item.sample))) {
+    throw new Error('通用表达方法无效');
+  }
   const parseMindMap = (items: unknown[], depth = 0): MindMapNode[] => {
     if (depth > 3 || items.length > 8) throw new Error('思维导图层级或节点过多');
     return items.map((item) => {
@@ -33,9 +40,9 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
     if (!isRecord(item) ||
       !dimensionNames.includes(item.name as string) ||
       typeof item.score !== 'number' || !Number.isInteger(item.score) || item.score < 0 || item.score > 10 ||
-      !isText(item.reason) || !isText(item.suggestion)
+      !isText(item.strength) || !isText(item.weakness)
     ) throw new Error('评估维度字段无效');
-    dimensions.push({ name: item.name as DimensionFeedback['name'], score: item.score, reason: item.reason, suggestion: item.suggestion });
+    dimensions.push({ name: item.name as DimensionFeedback['name'], score: item.score, strength: item.strength, weakness: item.weakness });
   }
   if (new Set(dimensions.map((item) => item.name)).size !== dimensionNames.length) {
     throw new Error('评估维度不能重复');
@@ -64,6 +71,7 @@ export function parseEvaluation(value: unknown, transcript: string): Omit<Evalua
     userMindMap: parseMindMap((value.userMindMap ?? []) as unknown[]),
     referenceMindMap: parseMindMap((value.referenceMindMap ?? []) as unknown[]),
     referenceAnswer: typeof value.referenceAnswer === 'string' ? value.referenceAnswer : '',
+    expressionMethod: value.expressionMethod as Evaluation['expressionMethod'],
     evidenceQuotes: Array.isArray(value.evidenceQuotes) ? value.evidenceQuotes as Evaluation['evidenceQuotes'] : [],
     featuredQuote,
     dimensions: dimensions.sort((a, b) => dimensionNames.indexOf(a.name) - dimensionNames.indexOf(b.name)),

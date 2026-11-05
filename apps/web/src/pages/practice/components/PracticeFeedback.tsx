@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { usePracticeStore } from "../../../stores/practiceStore";
 const MindMap = lazy(() =>
   import("./MindMap").then((module) => ({ default: module.MindMap })),
@@ -11,7 +11,9 @@ function renderHighlightedLine(line: string) {
     .split(/(==[^=]+==)/g)
     .map((part, index) =>
       part.startsWith("==") && part.endsWith("==") ? (
-        <mark key={index}>{part.slice(2, -2)}</mark>
+        <mark key={index} className={styles["reference-highlight"]}>
+          {part.slice(2, -2)}
+        </mark>
       ) : (
         part
       ),
@@ -127,6 +129,7 @@ function ScoreRadar({
 }
 
 export function PracticeFeedback() {
+  const [selectedStyle, setSelectedStyle] = useState<number | null>(null);
   const {
     comparison,
     topic,
@@ -151,6 +154,44 @@ export function PracticeFeedback() {
     <div className={styles["result-view"]}>
       {results.length === 2 && (
         <>
+          <details
+            className={`${styles["comparison-view"]} ${styles["feedback-disclosure"]}`}
+          >
+            <summary>查看两次评分</summary>
+            <p>分数仅供参考；是否进步，需要结合两轮原话判断。</p>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">评估维度</th>
+                  <th scope="col">首次</th>
+                  <th scope="col">第二次</th>
+                  <th scope="col">分数变化</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results[0].evaluation.dimensions.map((dimension) => {
+                  const second = results[1].evaluation.dimensions.find(
+                    (item) => item.name === dimension.name,
+                  )!;
+                  const change = second.score - dimension.score;
+                  return (
+                    <tr key={dimension.name}>
+                      <th scope="row">{dimension.name}</th>
+                      <td>{dimension.score}</td>
+                      <td>{second.score}</td>
+                      <td>
+                        {change > 0
+                          ? `+${change}`
+                          : change === 0
+                            ? "持平"
+                            : change}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </details>
           {comparison && (
             <section
               className={styles["answer-comparison"]}
@@ -170,25 +211,6 @@ export function PracticeFeedback() {
                   </h2>
                   <p>结合两轮原话，看看表达思路与论证方式发生了哪些变化。</p>
                 </div>
-                <aside className={styles["comparison-overview"]}>
-                  <strong>两轮表达对比</strong>
-                  <span>
-                    {
-                      comparison.changes.filter(
-                        (change) => change.status === "improved",
-                      ).length
-                    }{" "}
-                    项有提升
-                  </span>
-                  <span>
-                    {
-                      comparison.changes.filter(
-                        (change) => change.status === "unchanged",
-                      ).length
-                    }{" "}
-                    项变化不明显
-                  </span>
-                </aside>
               </header>
               <div className={styles["comparison-section-heading"]}>
                 <h3>两轮原话并列实录与递进</h3>
@@ -265,44 +287,6 @@ export function PracticeFeedback() {
               </button>
             ))}
           </div>
-          <details
-            className={`${styles["comparison-view"]} ${styles["feedback-disclosure"]}`}
-          >
-            <summary>查看两次评分</summary>
-            <p>分数仅供参考；是否进步，需要结合两轮原话判断。</p>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">评估维度</th>
-                  <th scope="col">首次</th>
-                  <th scope="col">第二次</th>
-                  <th scope="col">分数变化</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results[0].evaluation.dimensions.map((dimension) => {
-                  const second = results[1].evaluation.dimensions.find(
-                    (item) => item.name === dimension.name,
-                  )!;
-                  const change = second.score - dimension.score;
-                  return (
-                    <tr key={dimension.name}>
-                      <th scope="row">{dimension.name}</th>
-                      <td>{dimension.score}</td>
-                      <td>{second.score}</td>
-                      <td>
-                        {change > 0
-                          ? `+${change}`
-                          : change === 0
-                            ? "持平"
-                            : change}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </details>
         </>
       )}
       <section
@@ -472,10 +456,16 @@ export function PracticeFeedback() {
                     <small> / 10</small>
                   </span>
                 </div>
-                <p>{item.reason}</p>
-                <p className={styles["dimension-suggestion"]}>
-                  {item.suggestion}
-                </p>
+                <div className={styles["dimension-cards"]}>
+                  <section className={`${styles["dimension-card"]} ${styles["dimension-strength"]}`}>
+                    <h4>优点</h4>
+                    <p>{item.strength}</p>
+                  </section>
+                  <section className={`${styles["dimension-card"]} ${styles["dimension-weakness"]}`}>
+                    <h4>缺点</h4>
+                    <p>{item.weakness}</p>
+                  </section>
+                </div>
               </article>
             ))}
           </div>
@@ -495,6 +485,43 @@ export function PracticeFeedback() {
                 ))}
             </div>
           </section>
+          {result.evaluation.expressionMethod?.recommendedStyle && (
+            <section className={`${styles["reference-answer"]} ${styles["expression-method"]}`}>
+              <h3>换一种方式表达</h3>
+              <p className={styles["expression-method-name"]}>推荐风格：{result.evaluation.expressionMethod.recommendedStyle} · 结构：{result.evaluation.expressionMethod.structure}</p>
+              <p className={styles["expression-method-suitable"]}>{result.evaluation.expressionMethod.rationale} {result.evaluation.expressionMethod.suitableFor}</p>
+              <ol>
+                {result.evaluation.expressionMethod.steps.map((step, index) => <li key={index}>{step}</li>)}
+              </ol>
+              {result.evaluation.expressionMethod.sentenceStarters.length > 0 && (
+                <div className={styles["sentence-starters"]}>
+                  <h4>可以借用的句式开头</h4>
+                  {result.evaluation.expressionMethod.sentenceStarters.map((starter, index) => <p key={index}>“{starter}”</p>)}
+                </div>
+              )}
+              {result.evaluation.expressionMethod.styleExamples.length > 0 && (
+                <div className={styles["style-examples"]}>
+                  <h4>同一观点，不同表达风格</h4>
+                  {(() => {
+                    const examples = result.evaluation.expressionMethod.styleExamples;
+                    const recommendedIndex = examples.findIndex((example) => example.name === result.evaluation.expressionMethod.recommendedStyle);
+                    const activeIndex = selectedStyle !== null && examples[selectedStyle] ? selectedStyle : Math.max(recommendedIndex, 0);
+                    return <>
+                  <div className={styles["style-tabs"]} role="tablist" aria-label="表达风格示范">
+                    {result.evaluation.expressionMethod.styleExamples.map((example, index) => (
+                      <button key={example.name} type="button" role="tab" aria-selected={activeIndex === index} onClick={() => setSelectedStyle(index)}>
+                        <span className={`${styles["otter-avatar"]} ${styles[["otter-analyst", "otter-storyteller", "otter-workplace", "otter-host"][index]]}`} aria-hidden="true" />
+                        {example.name}{example.name === result.evaluation.expressionMethod.recommendedStyle ? " · 推荐" : ""}
+                      </button>
+                    ))}
+                  </div>
+                  <p className={styles["style-sample"]} role="tabpanel">{examples[activeIndex].sample}</p>
+                    </>;
+                  })()}
+                </div>
+              )}
+            </section>
+          )}
         </details>
       </section>
     </div>

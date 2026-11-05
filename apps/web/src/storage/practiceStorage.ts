@@ -43,6 +43,7 @@ export async function getPractice(id: string): Promise<Practice> {
         userMindMap: evaluation.userMindMap ?? [],
         referenceMindMap: evaluation.referenceMindMap ?? [],
         referenceAnswer: evaluation.referenceAnswer ?? '',
+        expressionMethod: evaluation.expressionMethod ?? { recommendedStyle: '', structure: '', rationale: '', suitableFor: '', steps: [], sentenceStarters: [], styleExamples: [] },
         evidenceQuotes: evaluation.evidenceQuotes ?? [],
         dimensions: evaluation.dimensions ?? [],
         strengths: evaluation.strengths ?? [],
