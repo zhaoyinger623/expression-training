@@ -126,7 +126,7 @@ function usePracticeState() {
     setShowAnswer(true);
   }
 
-  async function openPractice(id: string) {
+  async function openPractice(id: string, continuePractice = false) {
     setOpeningId(id);
     setError('');
     try {
@@ -137,7 +137,7 @@ function usePracticeState() {
       setResults(practice.results);
       setComparison(practice.comparison);
       setSelected(practice.results.length - 1);
-      setShowAnswer(false);
+      setShowAnswer(continuePractice && practice.results.length === 1);
       recorder.reset();
       return true;
     } catch (cause) {

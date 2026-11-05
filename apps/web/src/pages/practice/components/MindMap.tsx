@@ -16,6 +16,9 @@ export function MindMap({ title, center, nodes, variant }: { title: string; cent
   useEffect(() => {
     if (!svgRef.current) return;
     const { root } = transformer.transform(markdown);
+    const branchColors = variant === 'user'
+      ? ['#4777a8', '#bd8052', '#658f68', '#8b70a8', '#bf6870']
+      : ['#25806f', '#5883b8', '#bd8b3e', '#9a6e9e', '#5c987e'];
     const markmap = Markmap.create(svgRef.current, {
       autoFit: true,
       duration: 0,
@@ -24,7 +27,11 @@ export function MindMap({ title, center, nodes, variant }: { title: string; cent
       spacingHorizontal: 90,
       spacingVertical: 14,
       paddingX: 14,
-      color: () => variant === 'user' ? '#285f8f' : '#187568',
+      color: (node) => {
+        if (node.state.depth === 0) return variant === 'user' ? '#315c82' : '#176b5d';
+        const branchId = Number(node.state.path.split('.')[1] ?? node.state.id);
+        return branchColors[(branchId - 1) % branchColors.length];
+      },
     }, root);
     return () => markmap.destroy();
   }, [markdown, variant]);

@@ -62,6 +62,10 @@ export async function getPracticeHistory(offset = 0): Promise<PracticeHistoryRes
     items: practices.slice(offset, offset + 20).map((practice) => ({
       id: practice.id, topicTitle: practice.topic.title, attemptCount: practice.results.length,
       createdAt: practice.createdAt, updatedAt: practice.updatedAt,
+      totalDurationSeconds: practice.results.reduce((total, result) => total + result.attempt.durationSeconds, 0),
+      firstTranscript: practice.results[0]?.attempt.transcript ?? '',
+      scoreChange: practice.results.length === 2 ? practice.results[1].evaluation.overallScore - practice.results[0].evaluation.overallScore : null,
+      improvedDimensions: practice.results.length === 2 ? practice.results[1].evaluation.dimensions.filter((dimension) => dimension.score > (practice.results[0].evaluation.dimensions.find((first) => first.name === dimension.name)?.score ?? dimension.score)).length : 0,
     })),
   };
 }

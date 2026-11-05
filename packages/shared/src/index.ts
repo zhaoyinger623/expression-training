@@ -117,6 +117,10 @@ export interface PracticeSummary {
   attemptCount: number;
   createdAt: string;
   updatedAt: string;
+  totalDurationSeconds: number;
+  firstTranscript: string;
+  scoreChange: number | null;
+  improvedDimensions: number;
 }
 
 export interface PracticeHistoryResponse {
